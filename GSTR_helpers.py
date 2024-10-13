@@ -81,8 +81,8 @@ def find_ratio_to_inert(untreated_df, input_control_gRNA_list, count_cutoff=2):
     untreated_df = untreated_df[(untreated_df['Count'] > count_cutoff)].copy(deep=True)
     # Find the total number of inert gRNAs per mouse (TTN_inert)
     TTN_inert_per_mouse = untreated_df[untreated_df['gRNA'].isin(input_control_gRNA_list)].groupby(['Sample_ID']).gRNA.count().reset_index(name='TTN_inert')
-    # Find the total number of non-inert gRNAs per mouse (TTN)
-    TTN_df = untreated_df[~untreated_df['gRNA'].isin(input_control_gRNA_list)].groupby(['gRNA', 'Sample_ID']).Clonal_barcode.count().reset_index(name='TTN')
+    # Find the total number of each gRNAs per mouse (TTN), both inerts and non-inerts
+    TTN_df = untreated_df.groupby(['gRNA', 'Sample_ID']).Clonal_barcode.count().reset_index(name='TTN')
     # Merge TTN with the inert gRNA counts per mouse
     TTN_df = TTN_df.merge(TTN_inert_per_mouse, on='Sample_ID', how='left')
     # Calculate the ratio of TTN to TTN_inert
