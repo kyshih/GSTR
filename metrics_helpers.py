@@ -139,5 +139,3 @@ def calculate_ScoreRTN(treatment_df, untreated_df, scaled_df, input_control_list
     scaled_df['ScoreRTN'] = np.log2(treatment_df['RTN'] / untreated_df['RTN'])
 
     return treatment_df, untreated_df, scaled_df
-
-    

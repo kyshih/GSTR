@@ -10,7 +10,7 @@ def find_S(treated_df, untreated_df, input_control_gRNA_list, adjusted_cutoff,
            upper=5, lower=0.01, precision=0.001, max_iter=100, tolerance=2):
     """
         iterative
-        move L' in the untreated group to match median TTN of inert tumors in treated group
+        move L in the untreated group to match median TTN of inert tumors in treated group
         binary search
     """
     print(f'in find_S, inert guides are {input_control_gRNA_list}')
@@ -95,8 +95,8 @@ def find_ratio_to_inert(untreated_df, input_control_gRNA_list, count_cutoff=2):
 def subset_top_N_per_gRNA_across_samples(df, top_N_dict):
     """
     Args:
-        df (_type_): post-cutoff df with gRNA, Clonal_barcode, Cell_number, etc
-        top_N_dict (_type_): desire top N tumor counts of gRNAi in mouse k
+        df: post-cutoff df with gRNA, Clonal_barcode, Cell_number, etc
+        top_N_dict: desire top N tumor counts of gRNAi in mouse k
 
     Returns:
         df with top N largets tumors of gRNAi in all mice
@@ -206,8 +206,42 @@ def calculate_ScoreRGM(treated_df_cut, untreated_df_cut, ratio_dict, input_contr
     # Step 3: Merge the treated and untreated geometric mean DataFrames
     gm_treated_df = gm_treated_df.merge(gm_untreated_df, on='gRNA')
     
+    # Step 4: Calculate RGM
+    gm_treated_df['RGM_treated'] = gm_treated_df['Geo_mean_treated'] / gm_treated_df['Geo_mean_treated_inert']
+    gm_treated_df['RGM_untreated'] = gm_treated_df['Geo_mean_untreated'] / gm_treated_df['Geo_mean_untreated_inert']
+
     # Step 4: Calculate ScoreRGM
-    gm_treated_df['ScoreRGM'] = np.log2((gm_treated_df['Geo_mean_treated'] / gm_treated_df['Geo_mean_treated_inert']) / 
-                                        (gm_treated_df['Geo_mean_untreated'] / gm_treated_df['Geo_mean_untreated_inert']))
+    gm_treated_df['ScoreRGM'] = np.log2(gm_treated_df['RGM_treated'] / gm_treated_df['RGM_untreated'])
     
     return gm_treated_df
+
+def df_to_dict(df, key_col, value_col):
+    """
+    Convert specified DataFrame columns into a dictionary.
+
+    Parameters:
+    - df: to convert.
+    - key_col (str): The column to use as the dictionary's keys.
+    - value_col (str): The column to use as the dictionary's values.
+
+    Returns:
+    - dict: A dictionary mapping `key_col` to `value_col`.
+    """
+    return df.set_index(key_col)[value_col].to_dict()
+
+def Nested_Boostrap_Index_single_vary_mouse_count(input_dic, mouse_number):
+    """resample mice based on their indices
+
+    Args:
+        input_dic: {SampleID : [row_number that corresponds to a gRNA and read counts, etc]}
+        mouse_number: no. of mice you want to resample
+    """
+    temp_sample_list = list(input_dic.keys()) # list of SampleIDs
+    # I first sample mouse
+    temp_list = np.random.choice(temp_sample_list,mouse_number,replace = True) # sample the SampleID with replacement
+    temp_coho = []
+    for y in temp_list: # within each mouse
+        temp_array = input_dic.get(y) # get index of gRNA read associated of that mouse. array of tuple, each is a (gRNA, clonal_barcode)
+        temp_resampled = np.random.choice(temp_array,len(temp_array),replace = True) # resample gRNA
+        temp_coho = np.concatenate([temp_coho,temp_resampled])
+    return(temp_coho)  

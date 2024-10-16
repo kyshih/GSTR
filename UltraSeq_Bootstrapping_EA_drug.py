@@ -87,9 +87,9 @@ def Generate_ref_input_df(input_df,input_sample_list,input_cell_cutoff):
 
 def Calculate_Relative_Normalized_Metrics(input_df1,input_df2,percentile_list,input_control_gRNA_list):
     # Cas9 mouse
-    temp_df = input_df1.groupby(['gRNA'],as_index = False).apply(Cal_Tumor_Size_simple,(percentile_list),include_groups=False)
+    temp_df = input_df1.groupby(['gRNA'],as_index = False).apply(Cal_Tumor_Size_simple,(percentile_list))
     # Control mouse
-    temp_df2 = input_df2.groupby(['gRNA'],as_index = False).apply(Cal_Tumor_Size_simple,(percentile_list),include_groups=False)
+    temp_df2 = input_df2.groupby(['gRNA'],as_index = False).apply(Cal_Tumor_Size_simple,(percentile_list))
     
     # normalize TTN and TTB
     # for each gRNA, noramlize KTHC to KT
@@ -135,7 +135,7 @@ def Cal_Bootstrapping_Summary(x,trait_of_interest):
     return pd.Series(d, index=list(d.keys())) 
 
 def Generate_Final_Summary_Dataframe(input_df,trait_of_interest): # gRNA level
-    temp_summary = input_df[input_df['Bootstrap_id']!='Real'].groupby('gRNA',as_index = False).apply(Cal_Bootstrapping_Summary,(trait_of_interest), include_groups=False)
+    temp_summary = input_df[input_df['Bootstrap_id']!='Real'].groupby('gRNA',as_index = False).apply(Cal_Bootstrapping_Summary,(trait_of_interest))
     temp_output_df = copy.deepcopy(input_df[input_df['Bootstrap_id'] =='Real'])
     temp_output_df = temp_output_df.merge(temp_summary, on = 'gRNA')
     for temp_trait in trait_of_interest:
@@ -152,15 +152,13 @@ def Generate_Final_Summary_Dataframe(input_df,trait_of_interest): # gRNA level
 
 def Generate_Gene_Level_Summary_Dataframe(input_df, trait_of_interest):
     # calculate gene effect from bootstrapping to estiamte CI, pval, and FDR
-    # temp_df = input_df[input_df['Bootstrap_id']!='Real'].groupby([
-    #     'Targeted_gene_name','Bootstrap_id'],as_index = False).apply(Cal_Combined_Gene_Effect_v2,(trait_of_interest))
-    # temp_summary = temp_df.groupby('Targeted_gene_name',as_index = False).apply(Cal_Bootstrapping_Summary,(trait_of_interest))
     temp_df = input_df[input_df['Bootstrap_id']!='Real'].groupby([
-        'Targeted_gene_name','Bootstrap_id'],as_index = False).apply(Cal_Combined_Gene_Effect_v2,(trait_of_interest), include_groups=False)
-    temp_summary = temp_df.groupby('Targeted_gene_name',as_index = False).apply(Cal_Bootstrapping_Summary,(trait_of_interest), include_groups=False)
+        'Targeted_gene_name','Bootstrap_id'],as_index = False).apply(Cal_Combined_Gene_Effect_v2,(trait_of_interest))
+    temp_summary = temp_df.groupby('Targeted_gene_name',as_index = False).apply(Cal_Bootstrapping_Summary,(trait_of_interest))
+
     # calculate gene effect for the observed data. sample estiamte for the population parameters
     temp_output_df = input_df[input_df['Bootstrap_id'] =='Real'].groupby([
-        'Targeted_gene_name'],as_index = False).apply(Cal_Combined_Gene_Effect_v2,(trait_of_interest),include_groups=False)
+        'Targeted_gene_name'],as_index = False).apply(Cal_Combined_Gene_Effect_v2,(trait_of_interest))
     temp_output_df = temp_output_df.merge(temp_summary, on = 'Targeted_gene_name')
     for temp_trait in trait_of_interest:
         temp_name0 = temp_trait + '_fraction_greater_than_one'

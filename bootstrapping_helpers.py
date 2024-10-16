@@ -9,16 +9,19 @@ from metrics_helpers import *
 """
 
 def Generate_Final_Summary_Dataframe(input_df,trait_of_interest): # gRNA level
-    temp_summary = input_df[input_df['Bootstrap_id']!='Real'].groupby('gRNA',as_index = False).apply(Cal_Bootstrapping_Summary,(trait_of_interest), include_groups=False)
+    temp_summary = input_df[input_df['Bootstrap_id']!='Real'].groupby('gRNA',as_index = False).apply(Cal_Bootstrapping_Summary,(trait_of_interest))
     temp_output_df = copy.deepcopy(input_df[input_df['Bootstrap_id'] =='Real'])
     temp_output_df = temp_output_df.merge(temp_summary, on = 'gRNA')
     for temp_trait in trait_of_interest:
-        temp_name0 = temp_trait + '_fraction_greater_than_one' # t_test pvalue column name
+        if temp_trait == 'ScoreRTN' or temp_trait == 'ScoreRGM':
+            temp_name0 = temp_trait + '_fraction_greater_than_zero' # t_test pvalue column name
+        else:
+            temp_name0 = temp_trait + '_fraction_greater_than_one' # t_test pvalue column name
         temp_name1 = temp_trait + '_pvalue'
         temp_name2 = temp_name1 + '_FDR'
         temp_name3 = temp_name1 + '_twoside'
         temp_name4 = temp_name1 + '_twoside_FDR'
-        temp_output_df[temp_name1] = temp_output_df.apply(lambda x: min(x[temp_name0],1-x[temp_name0]), axis=1) # I dont know what this line is doing
+        temp_output_df[temp_name1] = temp_output_df.apply(lambda x: min(x[temp_name0],1-x[temp_name0]), axis=1)
         temp_output_df[temp_name2] = fdr(temp_output_df[temp_name1])
         temp_output_df[temp_name3] = temp_output_df[temp_name1]*2
         temp_output_df[temp_name4] = fdr(temp_output_df[temp_name3])
@@ -26,18 +29,19 @@ def Generate_Final_Summary_Dataframe(input_df,trait_of_interest): # gRNA level
 
 def Generate_Gene_Level_Summary_Dataframe(input_df, trait_of_interest):
     # calculate gene effect from bootstrapping to estiamte CI, pval, and FDR
-    # temp_df = input_df[input_df['Bootstrap_id']!='Real'].groupby([
-    #     'Targeted_gene_name','Bootstrap_id'],as_index = False).apply(Cal_Combined_Gene_Effect_v2,(trait_of_interest))
-    # temp_summary = temp_df.groupby('Targeted_gene_name',as_index = False).apply(Cal_Bootstrapping_Summary,(trait_of_interest))
     temp_df = input_df[input_df['Bootstrap_id']!='Real'].groupby([
-        'Targeted_gene_name','Bootstrap_id'],as_index = False).apply(Cal_Combined_Gene_Effect_v2,(trait_of_interest), include_groups=False)
-    temp_summary = temp_df.groupby('Targeted_gene_name',as_index = False).apply(Cal_Bootstrapping_Summary,(trait_of_interest), include_groups=False)
+        'Targeted_gene_name','Bootstrap_id'],as_index = False).apply(Cal_Combined_Gene_Effect_v2,(trait_of_interest))
+    temp_summary = temp_df.groupby('Targeted_gene_name',as_index = False).apply(Cal_Bootstrapping_Summary,(trait_of_interest))
+
     # calculate gene effect for the observed data. sample estiamte for the population parameters
     temp_output_df = input_df[input_df['Bootstrap_id'] =='Real'].groupby([
-        'Targeted_gene_name'],as_index = False).apply(Cal_Combined_Gene_Effect_v2,(trait_of_interest),include_groups=False)
+        'Targeted_gene_name'],as_index = False).apply(Cal_Combined_Gene_Effect_v2,(trait_of_interest))
     temp_output_df = temp_output_df.merge(temp_summary, on = 'Targeted_gene_name')
     for temp_trait in trait_of_interest:
-        temp_name0 = temp_trait + '_fraction_greater_than_one'
+        if temp_trait == 'ScoreRTN' or temp_trait == 'ScoreRGM':
+            temp_name0 = temp_trait + '_fraction_greater_than_zero' # t_test pvalue column name
+        else:
+            temp_name0 = temp_trait + '_fraction_greater_than_one' # t_test pvalue column name
         temp_name1 = temp_trait + '_pvalue'
         temp_name2 = temp_name1 + '_FDR'
         temp_name3 = temp_name1 + '_twoside'
@@ -60,7 +64,7 @@ def Cal_Bootstrapping_Summary(x,trait_of_interest):
         temp6 = temp_trait + '_2.5P'
         d[temp0] = x[temp_trait].quantile(0.95)
         d[temp1] = x[temp_trait].quantile(0.05)
-        if temp_trait == 'ScoreRTN' or 'log' in temp_trait:
+        if temp_trait == 'ScoreRTN' or temp_trait == 'ScoreRGM':
             temp2 = temp_trait +'_fraction_greater_than_zero'
             d[temp2] = sum(x[temp_trait]>0)/len(x[temp_trait])
         else:
@@ -89,7 +93,8 @@ def Generate_ref_input_df(input_df,input_sample_list,input_cell_cutoff):
 def Cal_Combined_Gene_Effect_v2(x,trait_of_interest): 
     # weighted effect of each gRNA based on TTN to see the combined gene effect
     d = {}
-    temp_weight_list = x['TTN_normalized_relative'] # using TTN as the weights associated with each gRNA
+    temp_weight_list = x['RTN_treated'] # for GSTR
+    #temp_weight_list = x['TTN_normalized_relative'] # using TTN as the weights associated with each gRNA
     #temp_weight_list = x['TTN_normalized']
     for temp_trait in trait_of_interest: # loop through each tumor metric, e.g LN_mean, Geo_mean, etc
         # normalizes the weighted effects by dividing each term by the sum of weights
@@ -98,8 +103,8 @@ def Cal_Combined_Gene_Effect_v2(x,trait_of_interest):
     return pd.Series(d, index=list(d.keys())) 
 
 def Find_Controls(input_gRNA_df, input_pattern):
-# this function will find the gRNA associated with control based on the key word
-# input_pattern is a regex expression 
+    # this function will find the gRNA associated with control based on the key word
+    # input_pattern is a regex expression 
     return(input_gRNA_df.loc[
         input_gRNA_df['Targeted_gene_name'].str.contains(input_pattern, na=False, regex=True),'gRNA'].unique())
     
