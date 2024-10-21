@@ -5,42 +5,8 @@ import pandas as pd
 import numpy as np
 import math
 from scipy.stats.mstats import gmean
+from find_S_helpers import find_S_given_base_cutoff, find_S
 
-def find_S(treated_df, untreated_df, input_control_gRNA_list, adjusted_cutoff, 
-           upper=5, lower=0.01, precision=0.001, max_iter=100, tolerance=2):
-    """
-        iterative
-        move L in the untreated group to match median TTN of inert tumors in treated group
-        binary search
-    """
-    print(f'in find_S, inert guides are {input_control_gRNA_list}')
-    treated_inert_df = treated_df[(treated_df['gRNA'].isin(input_control_gRNA_list))&(treated_df['Cell_number']>adjusted_cutoff)]
-    untreated_inert_df = untreated_df[untreated_df['gRNA'].isin(input_control_gRNA_list)]
-    N_control_treated = treated_inert_df.groupby(['Numbered_gene_name']).Clonal_barcode.count().median()
-    print(f'N inert treated is {N_control_treated}')
-    i = 0
-    if upper < lower:
-        print(f"upper bound must be higher than the lower bound")
-        return -1
-    while upper-lower >= precision and i < max_iter:
-        S = (upper + lower) / 2
-        cutoff_unt = adjusted_cutoff / S
-        N_control_untreated = untreated_inert_df[untreated_inert_df['Cell_number']>cutoff_unt].groupby(['Numbered_gene_name']).Clonal_barcode.count().median()
-        print(f'N inert untreated is {N_control_untreated}')
-	
-        if abs(N_control_treated - N_control_untreated) <= tolerance:
-            return S, cutoff_unt
-        if N_control_treated > N_control_untreated:
-            # cutoff for untreated is too high
-            # increase S to decrease cutoff_unt
-            lower = S
-        else:
-            # cutoff for untreated is too low
-            # decrease S to increase cutoff_unt
-            upper = S
-        i += 1
-    return S, cutoff_unt # cutoff in untreated will be basal cutoff
-    
 def compute_top_N_per_sample(df, ratio_dict, input_control_gRNA_list):
     '''
     Generates a nested dictionary mapping each Sample_ID to a dictionary of gRNAs and their scaled TTN counts.
@@ -229,7 +195,7 @@ def df_to_dict(df, key_col, value_col):
     """
     return df.set_index(key_col)[value_col].to_dict()
 
-def Nested_Boostrap_Index_single_vary_mouse_count(input_dic, mouse_number):
+def Nested_Bootstrap_Index_single_vary_mouse_count(input_dic, mouse_number):
     """resample mice based on their indices
 
     Args:

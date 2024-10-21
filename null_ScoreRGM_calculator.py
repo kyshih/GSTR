@@ -13,7 +13,6 @@
         basal_cutoff = adjusted_cutoff / S
     - shrinkage is reflected by the cell number cutoff
 """
-##FIXME: still need to figure where to add self to the functions
 
 import pandas as pd
 from GSTR_helpers import prepare_RGM_data, compute_geo_mean, df_to_dict

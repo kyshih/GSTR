@@ -8,7 +8,7 @@ from bootstrapping_helpers import *
 from metrics_helpers import *
 from GSTR_helpers import *
 import argparse
-from find_S_helpers import find_S_gradient_descent_se
+from find_S_helpers import find_S_gradient_descent_se_given_base_cutoff
 
 def bootstrap_GSTR_and_shrinkage(raw_df,input_sample_list1,input_sample_list2,cell_number_cutoff,input_control_gRNA_list,number_of_replicate,input_total_gRNA_number):
     # cell_number_cutoff is for treated (adjusted cutoff). This is given by me
@@ -20,14 +20,13 @@ def bootstrap_GSTR_and_shrinkage(raw_df,input_sample_list1,input_sample_list2,ce
     R_dict = find_ratio_to_inert(raw_untreated_df, input_control_gRNA_list)
     print(f"observed ratio dict is {R_dict}")
     # estimate S
-    #S, basal_cutoff = find_S(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
-    S, basal_cutoff = find_S_gradient_descent_se(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+    S, adj_cutoff = find_S_gradient_descent_se_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
     # return tumor size metric of each bootstrap cycle
     # applying the cell no. cutoff
     # treated mouse   
-    temp_ref_df1 = Generate_ref_input_df(raw_df,input_sample_list1,cell_number_cutoff)
+    temp_ref_df1 = Generate_ref_input_df(raw_df,input_sample_list1,adj_cutoff)
     # untreated mouse
-    temp_ref_df2 = Generate_ref_input_df(raw_df,input_sample_list2,basal_cutoff)
+    temp_ref_df2 = Generate_ref_input_df(raw_df,input_sample_list2,cell_number_cutoff)
     
     # dfs passed are post cutoff
     temp_final_df_observed = calculate_GSTR_metrics(temp_ref_df1, temp_ref_df2, input_control_gRNA_list, R_dict)
@@ -44,20 +43,19 @@ def bootstrap_GSTR_and_shrinkage(raw_df,input_sample_list1,input_sample_list2,ce
         Mouse_index_dic_2 = Generate_Index_Dictionary(raw_untreated_df)
         for bootstrap_cycle in range(number_of_replicate):
             # resampling the treated mice
-            x = Nested_Bootstrap_Index_single(Mouse_index_dic_1)
+            x = Nested_Boostrap_Index_single(Mouse_index_dic_1)
             temp_bootstrap_df_1 = raw_treated_df.loc[x]
             # resampleing the untreated mice
-            y = Nested_Bootstrap_Index_Special_single(Mouse_index_dic_2,raw_untreated_df,input_total_gRNA_number)
+            y = Nested_Boostrap_Index_Special_single(Mouse_index_dic_2,raw_untreated_df,input_total_gRNA_number)
             temp_bootstrap_df_2 = raw_untreated_df.loc[y]
             
             # re-estimate R
             R_dict = find_ratio_to_inert(temp_bootstrap_df_2, input_control_gRNA_list)
             print(f"bs {bootstrap_cycle} ratio dict is {R_dict}")
             # re-estimate S
-            #S, basal_cutoff = find_S(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
-            S, basal_cutoff = find_S_gradient_descent_se(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
-            temp_bootstrap_ref_df1 = Generate_ref_input_df(temp_bootstrap_df_1, temp_bootstrap_df_1['Sample_ID'].unique(), cell_number_cutoff)
-            temp_bootstrap_ref_df2 = Generate_ref_input_df(temp_bootstrap_df_2, temp_bootstrap_df_2['Sample_ID'].unique(), basal_cutoff)
+            S, adj_cutoff = find_S_gradient_descent_se_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
+            temp_bootstrap_ref_df1 = Generate_ref_input_df(temp_bootstrap_df_1, temp_bootstrap_df_1['Sample_ID'].unique(), adj_cutoff) # treated
+            temp_bootstrap_ref_df2 = Generate_ref_input_df(temp_bootstrap_df_2, temp_bootstrap_df_2['Sample_ID'].unique(), cell_number_cutoff) # untreated
             
             temp_metric_df = calculate_GSTR_metrics(temp_bootstrap_ref_df1, temp_bootstrap_ref_df2, input_control_gRNA_list, R_dict)
             temp_metric_df['Shrinkage'] = S
