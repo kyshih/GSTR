@@ -32,10 +32,10 @@ def Bootstrapping_Final_df(raw_df,input_sample_list1,input_sample_list2,cell_num
         Mouse_index_dic_2 = Generate_Index_Dictionary(temp_ref_df2)
         for bootstrap_cycle in range(number_of_replicate):
             # resampling the experimental mice
-            x = Nested_Boostrap_Index_single(Mouse_index_dic_1)
+            x = Nested_Bootstrap_Index_single(Mouse_index_dic_1)
             temp_bootstrap_df_1 = temp_ref_df1.loc[x]
             # resampleing the control mice
-            y = Nested_Boostrap_Index_Special_single(Mouse_index_dic_2,temp_ref_df2,input_total_gRNA_number)
+            y = Nested_Bootstrap_Index_Special_single(Mouse_index_dic_2,temp_ref_df2,input_total_gRNA_number)
             temp_bootstrap_df_2 = temp_ref_df2.loc[y]
             # Experimental mice normalized to control mice and normalize sgTS to sgInert
             temp_metric_df = Calculate_Relative_Normalized_Metrics(temp_bootstrap_df_1,temp_bootstrap_df_2,percentile_list,input_control_gRNA_list)
@@ -43,7 +43,7 @@ def Bootstrapping_Final_df(raw_df,input_sample_list1,input_sample_list2,cell_num
             temp_out_df = pd.concat([temp_out_df.reset_index(drop=True),temp_metric_df.reset_index(drop=True)]) # dropping the old index column. concatenate df along the rows
     return(temp_out_df)
 
-def Nested_Boostrap_Index_single(input_dic):
+def Nested_Bootstrap_Index_single(input_dic):
     # input_dic has {SampleID : [row_number that corresponds to a gRNA and read counts, etc]}
     temp_sample_list = list(input_dic.keys()) # list of SampleIDs
     # I first sample mouse
@@ -55,7 +55,7 @@ def Nested_Boostrap_Index_single(input_dic):
         temp_coho = np.concatenate([temp_coho,temp_resampled])
     return(temp_coho)  
 
-def Nested_Boostrap_Index_Special_single(input_dic,input_df,input_total_gRNA_number): # for the control mice
+def Nested_Bootstrap_Index_Special_single(input_dic,input_df,input_total_gRNA_number): # for the control mice
     temp_sample_list = list(input_dic.keys())
     # I first sample mouse
     temp_coho = []

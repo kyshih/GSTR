@@ -2,11 +2,11 @@
 """
 
 import pandas as pd
-from bootstrapping_helpers import Generate_ref_input_df, Generate_Index_Dictionary, Nested_Boostrap_Index_single, Nested_Boostrap_Index_Special_single, Find_Controls
-from GSTR_helpers import find_S_given_base_cutoff
-from find_S_helpers import find_S_gradient_descent_L1_loss_given_base_cutoff, find_S_gradient_descent_se_given_base_cutoff
+from bootstrapping_helpers import Generate_ref_input_df, Generate_Index_Dictionary, Nested_Bootstrap_Index_single, Nested_Bootstrap_Index_Special_single, Find_Controls
+from find_S_helpers import find_S_given_base_cutoff, find_S_gradient_descent_L1_loss_given_base_cutoff, find_S_gradient_descent_se_given_base_cutoff
 import numpy as np
 import copy
+import argparse
 
 def bootstrap_shrinkage_given_base_cutoff(raw_treated_df,raw_untreated_df,cell_number_cutoff,input_control_gRNA_list,number_of_replicate,input_total_gRNA_number):
     # Estimate Shrinkage (S) and find basal cutoff
@@ -23,10 +23,10 @@ def bootstrap_shrinkage_given_base_cutoff(raw_treated_df,raw_untreated_df,cell_n
         Mouse_index_dic_2 = Generate_Index_Dictionary(raw_untreated_df)
         for bootstrap_cycle in range(number_of_replicate):
             # resampling the treated mice
-            x = Nested_Boostrap_Index_single(Mouse_index_dic_1)
+            x = Nested_Bootstrap_Index_single(Mouse_index_dic_1)
             temp_bootstrap_df_1 = raw_treated_df.loc[x]
             # resampleing the untreated mice
-            y = Nested_Boostrap_Index_Special_single(Mouse_index_dic_2,raw_untreated_df,input_total_gRNA_number)
+            y = Nested_Bootstrap_Index_Special_single(Mouse_index_dic_2,raw_untreated_df,input_total_gRNA_number)
             temp_bootstrap_df_2 = raw_untreated_df.loc[y]
             
             # re-estimate S
@@ -55,7 +55,7 @@ def find_significant_shrinkage_given_base_cutoff(raw_df, input_sample_list1, inp
     return final_S_df, final_S_summary_df
 
 def Generate_Final_Shrinkage_Summary_Dataframe(input_df,trait_of_interest,group_key):
-    temp_summary = input_df[input_df['Bootstrap_id']!='Real'].groupby(group_key).apply(lambda x: pd.Series(np.percentile(x['Shrinkage'], [2.5, 50, 95, 97.5]), 
+    temp_summary = input_df[input_df['Bootstrap_id']!='Real'].groupby(group_key).apply(lambda x: pd.Series(np.nanpercentile(x['Shrinkage'], [2.5, 50, 95, 97.5]), 
                                  index=['Shrinkage_2.5P', 'Shrinkage_50P', 'Shrinkage_95P', 'Shrinkage_97.5P'])).reset_index()
     temp_output_df = copy.deepcopy(input_df[input_df['Bootstrap_id'] =='Real'])
     temp_output_df = temp_output_df.merge(temp_summary, on = group_key)
@@ -63,17 +63,37 @@ def Generate_Final_Shrinkage_Summary_Dataframe(input_df,trait_of_interest,group_
     return(temp_output_df)
 
 def main():
+    parser = argparse.ArgumentParser(description='A function to find S across base cutoffs in untreated group')
+    # parser.add_argument('-i', '--input-file', help='Path to the input file')
+    # parser.add_argument('-o', '--output-dir', help='Output directory')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
+    parser.add_argument('-var', '--variant', choices=['v1', 'v3'], help='Choose which EA variant to run')
+    parser.add_argument('-l', '--base_cutoff_list',nargs='+', required=True, help="A list of base cutoffs to try")
+
+    args = parser.parse_args()
+    variant = args.variant
+    cutoff_list = [int(x) for x in args.base_cutoff_list]
+    
+    if args.verbose:
+        print(f"Verbose mode is ON")
+        # print(f"Input file: {args.input_file}")
+        # print(f"Output directory: {args.output_dir}")
+        print(f"Given base cutoff in untreated group, finding matching adjusted cutoff in treated groups")
+        print(f"Variant: {args.variant}")
+        print(f"Start processing tumors and calculate S...")
+        
     parent_address = '/oak/stanford/scg/lab_mwinslow/Karen/Bootstrapping_analysis/ADJ4_LORSHP2_050824/Input_data'
     output_address = '/oak/stanford/scg/lab_mwinslow/Karen/Bootstrapping_analysis/ADJ4_LORSHP2_050824/Output_data/S'
-    variant = 'v1'
     
     if variant == 'v1':
         #v1
+        print('Running v1 variant...')
         raw_df_address = parent_address + '/EA_drug_final_df_v1.csv'
         sample_to_exclude = ['ADJ4_188','ADJ4_194','ADJ4_200','ADJ4_206','ADJ4_210','ADJ4_213','ADJ4_218',
                         'ADJ4_219','ADJ4_227','ADJ4_228','ADJ4_230','ADJ4_237','ADJ4_240','ADJ4_256','ADJ4_262','ADJ4_279'] 
     elif variant == 'v3':
         # v3
+        print('Running v3 variant...')
         raw_df_address = parent_address + '/EA_drug_final_df_v3.csv'
         sample_to_exclude = ['ADJ4_188','ADJ4_206','ADJ4_213','ADJ4_218','ADJ4_219','ADJ4_227',
                         'ADJ4_228','ADJ4_230','ADJ4_237','ADJ4_240','ADJ4_256','ADJ4_262','ADJ4_194']
@@ -97,7 +117,6 @@ def main():
         cohort_1 = temp_input[(temp_input['Mouse_genotype'] == experiment_genotype)&(temp_input['Treatment'] == elem)]['Sample_ID'].unique()
         cohort_2 = temp_input[(temp_input['Mouse_genotype'] == control_genotype)&(temp_input['Treatment'] == control_treatment)]['Sample_ID'].unique()
         
-        cutoff_list = [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000]
         interm_df, sum_df = find_significant_shrinkage_given_base_cutoff(temp_input, cohort_1, cohort_2, cutoff_list, control_gRNA_list, 100, sgRNA_number)
         interm_df['Treatment'] = elem
         sum_df['Treatment'] = elem

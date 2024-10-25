@@ -2,9 +2,8 @@
 """
 
 import pandas as pd
-from bootstrapping_helpers import Generate_ref_input_df, Generate_Index_Dictionary, Nested_Boostrap_Index_single, Nested_Boostrap_Index_Special_single, Find_Controls
-from GSTR_helpers import find_S
-from find_S_helpers import find_S_gradient_descent_L1_loss, find_S_gradient_descent_se
+from bootstrapping_helpers import Generate_ref_input_df, Generate_Index_Dictionary, Nested_Bootstrap_Index_single, Nested_Bootstrap_Index_Special_single, Find_Controls
+from find_S_helpers import find_S_gradient_descent_L1_loss, find_S_gradient_descent_se, find_S
 import numpy as np
 import copy
 
@@ -39,10 +38,10 @@ def bootstrap_shrinkage(raw_treated_df,raw_untreated_df,cell_number_cutoff,input
         Mouse_index_dic_2 = Generate_Index_Dictionary(raw_untreated_df)
         for bootstrap_cycle in range(number_of_replicate):
             # resampling the treated mice
-            x = Nested_Boostrap_Index_single(Mouse_index_dic_1)
+            x = Nested_Bootstrap_Index_single(Mouse_index_dic_1)
             temp_bootstrap_df_1 = raw_treated_df.loc[x]
             # resampleing the untreated mice
-            y = Nested_Boostrap_Index_Special_single(Mouse_index_dic_2,raw_untreated_df,input_total_gRNA_number)
+            y = Nested_Bootstrap_Index_Special_single(Mouse_index_dic_2,raw_untreated_df,input_total_gRNA_number)
             temp_bootstrap_df_2 = raw_untreated_df.loc[y]
             
             # re-estimate S

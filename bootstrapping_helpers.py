@@ -77,18 +77,21 @@ def Cal_Bootstrapping_Summary(x,trait_of_interest):
     return pd.Series(d, index=list(d.keys())) 
 
 def Generate_Index_Dictionary(input_df):
-    # This function generate a dictionary to speed up the boostrap process
-    temp_dic = {}
-    temp_group = input_df.groupby(['Sample_ID'])
-    # iterate through each group
-    for key in temp_group.groups.keys(): # Get the keys (unique 'Sample_ID')
-        # For each 'Sample_ID', get the array of indices and assign it to the dictionary
-        temp_dic[key] = temp_group.get_group(key).index.values
-        #temp_dic[key] = temp_group.get_group((key,)).index.values  # Wrap the key in a tuple
-    return(temp_dic)
+    """Generate a dictionary to speed up the bootstrap process.
+
+    Args:
+        input_df: df containing the data with 'Sample_ID' column.
+        
+    Returns:
+        temp_dic: dic with {'Sample_ID': (tumor indices)}.
+    """
+    grouped =  input_df.groupby('Sample_ID')
+    index_dic = {key: group.index.values for key, group in grouped}
+    return index_dic
 
 def Generate_ref_input_df(input_df,input_sample_list,input_cell_cutoff):
-    return(input_df[(input_df['Cell_number']>input_cell_cutoff)&(input_df['Sample_ID'].isin(input_sample_list))])
+    return(input_df[(input_df['Cell_number']>input_cell_cutoff)&
+                    (input_df['Sample_ID'].isin(input_sample_list))])
 
 def Cal_Combined_Gene_Effect_v2(x,trait_of_interest): 
     # weighted effect of each gRNA based on TTN to see the combined gene effect
@@ -108,7 +111,7 @@ def Find_Controls(input_gRNA_df, input_pattern):
     return(input_gRNA_df.loc[
         input_gRNA_df['Targeted_gene_name'].str.contains(input_pattern, na=False, regex=True),'gRNA'].unique())
     
-def Nested_Boostrap_Index_single(input_dic):
+def Nested_Bootstrap_Index_single(input_dic):
     # input_dic has {SampleID : [row_number that corresponds to a gRNA and read counts, etc]}
     temp_sample_list = list(input_dic.keys()) # list of SampleIDs
     # I first sample mouse
@@ -120,7 +123,7 @@ def Nested_Boostrap_Index_single(input_dic):
         temp_coho = np.concatenate([temp_coho,temp_resampled])
     return(temp_coho)  
 
-def Nested_Boostrap_Index_Special_single(input_dic,input_df,input_total_gRNA_number): # for the control mice
+def Nested_Bootstrap_Index_Special_single(input_dic,input_df,input_total_gRNA_number): # for the control mice
     temp_sample_list = list(input_dic.keys())
     # I first sample mouse
     temp_coho = []

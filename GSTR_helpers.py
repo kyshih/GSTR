@@ -5,7 +5,8 @@ import pandas as pd
 import numpy as np
 import math
 from scipy.stats.mstats import gmean
-from find_S_helpers import find_S_given_base_cutoff, find_S
+from metrics_helpers import LN_Mean
+#TODO: test out calculate_ScoreRSize_metrics and function it uses
 
 def compute_top_N_per_sample(df, ratio_dict, input_control_gRNA_list):
     '''
@@ -156,7 +157,7 @@ def prepare_RGM_data(treated_df_cut, untreated_df_cut, ratio_dict, input_control
     top_N_untreated_df = subset_top_N_per_gRNA_across_samples(untreated_df_cut, top_N_untreated_dict)
     
     return top_N_treated_df, top_N_untreated_df
-
+    
 def calculate_ScoreRGM(treated_df_cut, untreated_df_cut, ratio_dict, input_control_gRNA_list):
     # Step 1: Prepare Data
     top_N_treated_df, top_N_untreated_df = prepare_RGM_data(treated_df_cut, untreated_df_cut, ratio_dict, input_control_gRNA_list)
@@ -171,6 +172,8 @@ def calculate_ScoreRGM(treated_df_cut, untreated_df_cut, ratio_dict, input_contr
     
     # Step 3: Merge the treated and untreated geometric mean DataFrames
     gm_treated_df = gm_treated_df.merge(gm_untreated_df, on='gRNA')
+    # add on
+    gm_treated_df = gm_treated_df.merge(metrics_treated_df, on='gRNA')
     
     # Step 4: Calculate RGM
     gm_treated_df['RGM_treated'] = gm_treated_df['Geo_mean_treated'] / gm_treated_df['Geo_mean_treated_inert']
@@ -178,7 +181,7 @@ def calculate_ScoreRGM(treated_df_cut, untreated_df_cut, ratio_dict, input_contr
 
     # Step 4: Calculate ScoreRGM
     gm_treated_df['ScoreRGM'] = np.log2(gm_treated_df['RGM_treated'] / gm_treated_df['RGM_untreated'])
-    
+                                                                                       
     return gm_treated_df
 
 def df_to_dict(df, key_col, value_col):
@@ -211,3 +214,94 @@ def Nested_Bootstrap_Index_single_vary_mouse_count(input_dic, mouse_number):
         temp_resampled = np.random.choice(temp_array,len(temp_array),replace = True) # resample gRNA
         temp_coho = np.concatenate([temp_coho,temp_resampled])
     return(temp_coho)  
+
+def compute_LN(df, input_control_gRNA_list, group_cols, condition):
+    LN_inert = LN_Mean(df[df['gRNA'].isin(input_control_gRNA_list)]['Cell_number'])
+    LN_df = df.groupby(group_cols).apply(lambda x: LN_Mean(x['Cell_number'])).reset_index(name=f'LN_{condition}')
+    LN_df[f'LN_{condition}_inert'] = LN_inert
+    return LN_df
+
+def compute_Percentile(df, input_control_gRNA_list, group_cols, condition, perc=95):
+    inert_perc = np.percentile(df[df['gRNA'].isin(input_control_gRNA_list)]['Cell_number'], perc)
+    df_perc = df.groupby(group_cols).apply(lambda x: np.percentile(x['Cell_number'], perc)).reset_index(name=f'{perc}P_{condition}')
+    df_perc[f'{perc}P_{condition}_inert'] = inert_perc
+    return df_perc
+
+def compute_size_metrics(df: pd.DataFrame, input_control_gRNA_list, group_cols, condition: str) -> pd.DataFrame:
+    """
+    Compute geometric means, LN mean, and 95th percentile for the given DataFrame.
+    
+    Args:
+        df: DataFrame containing the data.
+        input_control_gRNA_list: List of inert gRNAs.
+        group_cols: Columns to group by.
+        condition: Condition name for the metrics.
+    
+    Returns:
+        DataFrame with computed metrics.
+    """
+    geo_mean_df = compute_geo_mean(df, input_control_gRNA_list, group_cols, f'Geo_mean_{condition}')
+    ln_mean_df = compute_LN(df, input_control_gRNA_list, group_cols, condition)
+    percentile_df = compute_percentile(df, input_control_gRNA_list, group_cols, condition)
+    return geo_mean_df.merge(ln_mean_df, on='gRNA').merge(percentile_df, on='gRNA')
+
+def calculate_score_size(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate ScoreRGM, ScoreRLN, and ScoreR95P.
+    
+    Args:
+        df: DataFrame with calculated ratios.
+    
+    Returns:
+        DataFrame with calculated scores.
+    """
+    df['ScoreRGM'] = np.log2(df['RGM_treated'] / df['RGM_untreated'])
+    df['ScoreRLN'] = np.log2(df['RLN_treated'] / df['RLN_untreated'])
+    df['ScoreR95P'] = np.log2(df['R95P_treated'] / df['R95P_untreated'])
+    return df
+
+def calculate_relative_size_metrics(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate RGM, RLN, and R95P ratios.
+    Args:
+        df: df with gmean, LN mean , 95P.
+    Returns:
+        DataFrame with RGM, RLN, R95P.
+    """
+    df['RGM_treated'] = df['Geo_mean_treated'] / df['Geo_mean_treated_inert']
+    df['RGM_untreated'] = df['Geo_mean_untreated'] / df['Geo_mean_untreated_inert']
+    df['RLN_treated'] = df['LN_treated'] / df['LN_treated_inert']
+    df['RLN_untreated'] = df['LN_untreated'] / df['LN_untreated_inert']
+    df['R95P_treated'] = df['95P_treated'] / df['95P_treated_inert']
+    df['R95P_untreated'] = df['95P_untreated'] / df['95P_untreated_inert']
+    return df
+
+def calculate_ScoreRSize_metrics(treated_df_cut, untreated_df_cut, ratio_dict, input_control_gRNA_list):
+    """
+    Calculate ScoreRSize metrics for treated and untreated data.
+    
+    Args:
+        treated_df_cut: post cutoff
+        untreated_df_cut: post cutoff
+        ratio_dict: Dict with ratio values in each mouse.
+    
+    Returns:
+        df with calculated ScoreRSize metrics.
+    """
+    # Step 1: Prepare Data
+    top_N_treated_df, top_N_untreated_df = prepare_RGM_data(treated_df_cut, untreated_df_cut, ratio_dict, input_control_gRNA_list)
+    
+    # Step 2: Compute Geometric Means, LN mean and 95P
+    treated_metrics_df = compute_size_metrics(top_N_treated_df, input_control_gRNA_list, ['gRNA', 'Targeted_gene_name', 'Numbered_gene_name'], 'treated')
+    untreated_metrics_df = compute_size_metrics(top_N_untreated_df, input_control_gRNA_list, ['gRNA'], 'untreated')
+    
+    # Step 3: Merge the treated and untreated metrics
+    merged_metrics_df = treated_metrics_df.merge(untreated_metrics_df, on=['gRNA'], suffixes=('_treated', '_untreated'))
+
+    # Step 4: Calculate RGM, RLN, R95P
+    relative_metrics_df = calculate_relative_size_metrics(merged_metrics_df)
+    
+    # Step 5: Calculate ScoreRSize
+    scores_df = calculate_score_size(relative_metrics_df)
+                                                                                       
+    return scores_df

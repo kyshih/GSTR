@@ -43,10 +43,10 @@ def bootstrap_GSTR_and_shrinkage(raw_df,input_sample_list1,input_sample_list2,ce
         Mouse_index_dic_2 = Generate_Index_Dictionary(raw_untreated_df)
         for bootstrap_cycle in range(number_of_replicate):
             # resampling the treated mice
-            x = Nested_Boostrap_Index_single(Mouse_index_dic_1)
+            x = Nested_Bootstrap_Index_single(Mouse_index_dic_1)
             temp_bootstrap_df_1 = raw_treated_df.loc[x]
-            # resampleing the untreated mice
-            y = Nested_Boostrap_Index_Special_single(Mouse_index_dic_2,raw_untreated_df,input_total_gRNA_number)
+            # resampling the untreated mice
+            y = Nested_Bootstrap_Index_Special_single(Mouse_index_dic_2,raw_untreated_df,input_total_gRNA_number)
             temp_bootstrap_df_2 = raw_untreated_df.loc[y]
             
             # re-estimate R
@@ -161,7 +161,7 @@ def main():
         
     if number_of_bootstrap!=0:
         # generate summary statistics
-        temp_trait_list = ['ScoreRTN', 'ScoreRGM', 'Shrinkage']
+        temp_trait_list = ['ScoreRTN', 'ScoreRGM', 'Shrinkage', 'ScoreRLN', 'ScoreR95P']
         temp_trait_list = list(set(temp_trait_list))
         
         Final_summary_df = Generate_Final_Summary_Dataframe(test_final_df,temp_trait_list) # gRNA level
