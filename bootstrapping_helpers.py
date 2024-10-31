@@ -137,4 +137,9 @@ def Nested_Bootstrap_Index_Special_single(input_dic,input_df,input_total_gRNA_nu
             temp_array = input_dic.get(y) # array of tuple, each is a (gRNA, clonal_barcode)
             temp_resampled = np.random.choice(temp_array,len(temp_array),replace = True)
             temp_coho = np.concatenate([temp_coho,temp_resampled]) 
-    return(temp_coho)  
+    return(temp_coho)
+
+def get_excluded_samples_from_file(file_address):
+    with open(file_address, 'r') as f:
+        sample_to_exclude = [line.strip() for line in f]
+    return sample_to_exclude

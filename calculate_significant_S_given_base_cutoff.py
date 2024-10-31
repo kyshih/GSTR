@@ -2,7 +2,7 @@
 """
 
 import pandas as pd
-from bootstrapping_helpers import Generate_ref_input_df, Generate_Index_Dictionary, Nested_Bootstrap_Index_single, Nested_Bootstrap_Index_Special_single, Find_Controls
+from bootstrapping_helpers import Generate_ref_input_df, Generate_Index_Dictionary, Nested_Bootstrap_Index_single, Nested_Bootstrap_Index_Special_single, Find_Controls, get_excluded_samples_from_file
 from find_S_helpers import find_S_given_base_cutoff, find_S_gradient_descent_L1_loss_given_base_cutoff, find_S_gradient_descent_se_given_base_cutoff
 import numpy as np
 import copy
@@ -25,7 +25,7 @@ def bootstrap_shrinkage_given_base_cutoff(raw_treated_df,raw_untreated_df,cell_n
             # resampling the treated mice
             x = Nested_Bootstrap_Index_single(Mouse_index_dic_1)
             temp_bootstrap_df_1 = raw_treated_df.loc[x]
-            # resampleing the untreated mice
+            # resampling the untreated mice
             y = Nested_Bootstrap_Index_Special_single(Mouse_index_dic_2,raw_untreated_df,input_total_gRNA_number)
             temp_bootstrap_df_2 = raw_untreated_df.loc[y]
             
@@ -46,6 +46,7 @@ def find_significant_shrinkage_given_base_cutoff(raw_df, input_sample_list1, inp
     raw_untreated_df = Generate_ref_input_df(raw_df,input_sample_list2,0)
     S_out_df = []
     for cutoff in cell_number_cutoff_list:
+        print(f'working on cutoff {cutoff}...')
         shrinkage_result = bootstrap_shrinkage_given_base_cutoff(raw_treated_df, raw_untreated_df, cutoff, input_control_gRNA_list, number_of_replicate, input_total_gRNA_number)
         S_out_df.append(pd.DataFrame(shrinkage_result))
     
@@ -89,25 +90,28 @@ def main():
         #v1
         print('Running v1 variant...')
         raw_df_address = parent_address + '/EA_drug_final_df_v1.csv'
-        sample_to_exclude = ['ADJ4_188','ADJ4_194','ADJ4_200','ADJ4_206','ADJ4_210','ADJ4_213','ADJ4_218',
-                        'ADJ4_219','ADJ4_227','ADJ4_228','ADJ4_230','ADJ4_237','ADJ4_240','ADJ4_256','ADJ4_262','ADJ4_279'] 
+        discard_sample_address = parent_address + '/Discarded_sample_list_for_EA_drug_v1.txt'
+
     elif variant == 'v3':
         # v3
         print('Running v3 variant...')
         raw_df_address = parent_address + '/EA_drug_final_df_v3.csv'
-        sample_to_exclude = ['ADJ4_188','ADJ4_206','ADJ4_213','ADJ4_218','ADJ4_219','ADJ4_227',
-                        'ADJ4_228','ADJ4_230','ADJ4_237','ADJ4_240','ADJ4_256','ADJ4_262','ADJ4_194']
+        discard_sample_address = parent_address + '/Discarded_sample_list_for_EA_drug_v3.txt'
+    
+    sample_to_exclude = get_excluded_samples_from_file(discard_sample_address)
+    print(f'Number of discarded samples: {len(sample_to_exclude)}')
+    print(f'Excluding samples: {sample_to_exclude}')
     
     raw_summary_df = pd.read_csv(raw_df_address)
     raw_summary_df= raw_summary_df[~raw_summary_df.Sample_ID.isin(sample_to_exclude)] # exclude the sample 
      
-    temp_input = raw_summary_df[raw_summary_df['Identity']=='gRNA'] # consider only sgRNA but not spiekin
+    temp_input = raw_summary_df[raw_summary_df['Identity']=='gRNA'] # consider only sgRNA but not spikein
     sgRNA_number = len(temp_input[temp_input['Identity']=='gRNA']['gRNA'].unique())
      
     control_gRNA_list = Find_Controls(raw_summary_df,'Safe|Neo|NT')
     experiment_genotype = 'CE'
     control_genotype = 'CE'
-    control_treatment = 'VEHICLE' # modify this
+    control_treatment = 'VEHICLE'
     exp_treatment = ['COMBO', 'LOR', 'T0', 'VEHICLE']
      
     interm_df_list = []

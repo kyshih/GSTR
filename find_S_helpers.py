@@ -1,8 +1,8 @@
-""" This moduel includes different versions of find_S functions to estimate GxE
+""" This module includes different versions of find_S functions to estimate GxE
     test out these functions for your experiment to decide which one to use. You might need to modify learning rate
     to avoid oscillations of errors esp in SE loss and in L1 loss to improve rate of convergence
 """
-
+# gRNA level median inert TTN
 def find_S(treated_df, untreated_df, input_control_gRNA_list, adjusted_cutoff, 
            upper=20, lower=0.01, precision=0.001, max_iter=100, tolerance=5):
     """
@@ -209,8 +209,56 @@ def find_S_gradient_descent_L1_loss_given_base_cutoff(treated_df, untreated_df, 
         S -= learning_rate * gradient  # Adjust S based on gradient (step size)
     return S, cutoff_tr
 
-def find_S_gradient_descent_se_given_base_cutoff(treated_df, untreated_df, input_control_gRNA_list, base_cutoff, 
-                                learning_rate=0.001, max_iter=5000, tolerance=25):
+# def find_S_gradient_descent_se_given_base_cutoff(treated_df, untreated_df, input_control_gRNA_list, base_cutoff, 
+#                                 learning_rate=0.001, max_iter=5000, tolerance=25):
+#     """
+#     Gradient descent to find optimal shrinkage factor S using squared error (SE).
+    
+#     Args:
+#         treated_df: DataFrame with treated samples
+#         untreated_df: DataFrame with untreated samples
+#         input_control_gRNA_list: List of inert gRNAs
+#         adjusted_cutoff: Cell number cutoff for the treated group
+#         learning_rate: Step size for gradient descent
+#         max_iter: Maximum number of iterations
+#         tolerance: Minimum error difference to stop iteration
+    
+#     Returns:
+#         S: Optimal shrinkage factor
+#         cutoff_unt: Cutoff for untreated group (L = L' / S)
+#     """
+#     untreated_inert_df = untreated_df[(untreated_df['gRNA'].isin(input_control_gRNA_list)) & (untreated_df['Cell_number'] > base_cutoff)]
+#     treated_inert_df = treated_df[treated_df['gRNA'].isin(input_control_gRNA_list)]
+    
+#     # Calculate the treated group's inert tumors median
+#     N_control_untreated = untreated_inert_df.groupby(['Numbered_gene_name']).Clonal_barcode.count().median()
+    
+#     S = 1  # Initial guess for shrinkage factor
+#     for i in range(max_iter):
+#         cutoff_tr = base_cutoff * S
+#         N_control_treated = treated_inert_df[treated_inert_df['Cell_number'] > cutoff_tr].groupby(['Numbered_gene_name']).Clonal_barcode.count().median()
+
+#         # Compute Squared Error (SE)
+#         error = (N_control_untreated - N_control_treated)
+#         se_error = error ** 2  # Squared error
+        
+#         print(f'Iteration {i}: S = {S}, SE Error = {se_error}')
+
+#         # If the error is within the tolerance, we can stop
+#         if se_error <= tolerance:
+#             return S, cutoff_tr
+        
+#         # Gradient is proportional to the error
+#         gradient = -2 * error  # Derivative of (N_control_treated - N_control_untreated) ** 2
+#         print(f'Grandient: {gradient}')
+#         # Update S based on the gradient
+#         S += learning_rate * gradient
+    
+#     return S, cutoff_tr  # Return the final value of S and cutoff for untreated group
+
+# mouse level median inert TTN
+def find_S_gradient_descent_se_given_base_cutoff(treated_df, untreated_df, input_control_gRNA_list, base_cutoff,
+                                learning_rate=0.005, max_iter=5000, tolerance=25, group_col=['Sample_ID']):
     """
     Gradient descent to find optimal shrinkage factor S using squared error (SE).
     
@@ -227,23 +275,25 @@ def find_S_gradient_descent_se_given_base_cutoff(treated_df, untreated_df, input
         S: Optimal shrinkage factor
         cutoff_unt: Cutoff for untreated group (L = L' / S)
     """
+    print(f'group col is {group_col}')
     untreated_inert_df = untreated_df[(untreated_df['gRNA'].isin(input_control_gRNA_list)) & (untreated_df['Cell_number'] > base_cutoff)]
     treated_inert_df = treated_df[treated_df['gRNA'].isin(input_control_gRNA_list)]
     
     # Calculate the treated group's inert tumors median
-    N_control_untreated = untreated_inert_df.groupby(['Numbered_gene_name']).Clonal_barcode.count().median()
+    N_control_untreated = untreated_inert_df.groupby(group_col).Clonal_barcode.count().median()
+    print(f'median inert TTN untreated: {N_control_untreated}')
     
     S = 1  # Initial guess for shrinkage factor
     for i in range(max_iter):
         cutoff_tr = base_cutoff * S
-        N_control_treated = treated_inert_df[treated_inert_df['Cell_number'] > cutoff_tr].groupby(['Numbered_gene_name']).Clonal_barcode.count().median()
-
+        N_control_treated = treated_inert_df[treated_inert_df['Cell_number'] > cutoff_tr].groupby(group_col).Clonal_barcode.count().median()
+        print(f'Median inert TTN treated: {N_control_treated}')
+        
         # Compute Squared Error (SE)
         error = (N_control_untreated - N_control_treated)
         se_error = error ** 2  # Squared error
         
         print(f'Iteration {i}: S = {S}, SE Error = {se_error}')
-
         # If the error is within the tolerance, we can stop
         if se_error <= tolerance:
             return S, cutoff_tr
