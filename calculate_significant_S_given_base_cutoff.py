@@ -3,7 +3,7 @@
 
 import pandas as pd
 from bootstrapping_helpers import Generate_ref_input_df, Generate_Index_Dictionary, Nested_Bootstrap_Index_single, Nested_Bootstrap_Index_Special_single, Find_Controls, get_excluded_samples_from_file
-from find_S_helpers import find_S_given_base_cutoff, find_S_gradient_descent_L1_loss_given_base_cutoff, find_S_gradient_descent_se_given_base_cutoff
+from find_S_helpers import find_S_given_base_cutoff, find_S_gradient_descent_L1_loss_given_base_cutoff, find_S_gradient_descent_se_given_base_cutoff, find_optimal_S
 import numpy as np
 import copy
 import argparse
@@ -12,7 +12,8 @@ def bootstrap_shrinkage_given_base_cutoff(raw_treated_df,raw_untreated_df,cell_n
     # Estimate Shrinkage (S) and find basal cutoff
     #S, adjusted_cutoff = find_S_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
     #S, adjusted_cutoff = find_S_gradient_descent_L1_loss_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
-    S, adjusted_cutoff = find_S_gradient_descent_se_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+    #S, adjusted_cutoff = find_S_gradient_descent_se_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+    S, adjusted_cutoff = find_optimal_S(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
     # Initialize list to store results
     results = [{'Shrinkage': S, 'Bootstrap_id': 'Real', 'basal_cutoff': cell_number_cutoff, 'adjusted_cutoff': adjusted_cutoff}]
     
@@ -32,7 +33,8 @@ def bootstrap_shrinkage_given_base_cutoff(raw_treated_df,raw_untreated_df,cell_n
             # re-estimate S
             #S, adjusted_cutoff = find_S_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
             #S, adjusted_cutoff = find_S_gradient_descent_L1_loss_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
-            S, adjusted_cutoff = find_S_gradient_descent_se_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
+            #S, adjusted_cutoff = find_S_gradient_descent_se_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
+            S, adjusted_cutoff = find_optimal_S(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
             # Append the result for this bootstrap cycle
             results.append({'Shrinkage': S, 'Bootstrap_id': f'B{bootstrap_cycle}',
                             'basal_cutoff': cell_number_cutoff, 'adjusted_cutoff': adjusted_cutoff})
@@ -106,7 +108,7 @@ def main():
     raw_summary_df= raw_summary_df[~raw_summary_df.Sample_ID.isin(sample_to_exclude)] # exclude the sample 
      
     temp_input = raw_summary_df[raw_summary_df['Identity']=='gRNA'] # consider only sgRNA but not spikein
-    sgRNA_number = len(temp_input[temp_input['Identity']=='gRNA']['gRNA'].unique())
+    sgRNA_number = temp_input[temp_input['Identity']=='gRNA']['gRNA'].nunique()
      
     control_gRNA_list = Find_Controls(raw_summary_df,'Safe|Neo|NT')
     experiment_genotype = 'CE'
