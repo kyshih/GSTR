@@ -10,12 +10,10 @@ import argparse
 
 def bootstrap_shrinkage_given_base_cutoff(raw_treated_df,raw_untreated_df,cell_number_cutoff,input_control_gRNA_list,number_of_replicate,input_total_gRNA_number):
     # Estimate Shrinkage (S) and find basal cutoff
-    #S, adjusted_cutoff = find_S_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
-    #S, adjusted_cutoff = find_S_gradient_descent_L1_loss_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
-    #S, adjusted_cutoff = find_S_gradient_descent_se_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
-    S, adjusted_cutoff = find_optimal_S(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+    #S, adjusted_cutoff, SE = find_optimal_S(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+    S, adjusted_cutoff, SE = find_S_gradient_descent_se_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
     # Initialize list to store results
-    results = [{'Shrinkage': S, 'Bootstrap_id': 'Real', 'basal_cutoff': cell_number_cutoff, 'adjusted_cutoff': adjusted_cutoff}]
+    results = [{'Shrinkage': S, 'Bootstrap_id': 'Real', 'basal_cutoff': cell_number_cutoff, 'adjusted_cutoff': adjusted_cutoff, 'SE': SE}]
     
     if number_of_replicate!=0:
         # treated
@@ -29,15 +27,13 @@ def bootstrap_shrinkage_given_base_cutoff(raw_treated_df,raw_untreated_df,cell_n
             # resampling the untreated mice
             y = Nested_Bootstrap_Index_Special_single(Mouse_index_dic_2,raw_untreated_df,input_total_gRNA_number)
             temp_bootstrap_df_2 = raw_untreated_df.loc[y]
-            
             # re-estimate S
-            #S, adjusted_cutoff = find_S_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
-            #S, adjusted_cutoff = find_S_gradient_descent_L1_loss_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
-            #S, adjusted_cutoff = find_S_gradient_descent_se_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
-            S, adjusted_cutoff = find_optimal_S(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+            #S, adjusted_cutoff, SE = find_optimal_S(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
+            S, adjusted_cutoff, SE = find_S_gradient_descent_se_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
             # Append the result for this bootstrap cycle
             results.append({'Shrinkage': S, 'Bootstrap_id': f'B{bootstrap_cycle}',
-                            'basal_cutoff': cell_number_cutoff, 'adjusted_cutoff': adjusted_cutoff})
+                            'basal_cutoff': cell_number_cutoff, 'adjusted_cutoff': adjusted_cutoff,
+                            'SE': SE})
     
     return results
 
@@ -85,8 +81,8 @@ def main():
         print(f"Variant: {args.variant}")
         print(f"Start processing tumors and calculate S...")
         
-    parent_address = '/oak/stanford/scg/lab_mwinslow/Karen/Bootstrapping_analysis/ADJ4_LORSHP2_050824/Input_data'
-    output_address = '/oak/stanford/scg/lab_mwinslow/Karen/Bootstrapping_analysis/ADJ4_LORSHP2_050824/Output_data/S'
+    parent_address = '/oak/stanford/scg/lab_mwinslow/Karen/Bootstrapping_analysis/ADJ4_LORSHP2_050824/Input'
+    output_address = '/oak/stanford/scg/lab_mwinslow/Karen/Bootstrapping_analysis/ADJ4_LORSHP2_050824/Output/S'
     
     if variant == 'v1':
         #v1

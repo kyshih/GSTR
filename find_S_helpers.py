@@ -210,7 +210,7 @@ def find_S_gradient_descent_L1_loss_given_base_cutoff(treated_df, untreated_df, 
     return S, cutoff_tr
 
 def find_S_gradient_descent_se_given_base_cutoff(treated_df, untreated_df, input_control_gRNA_list, base_cutoff,
-                                learning_rate=0.005, max_iter=5000, tolerance=400, group_col=['Numbered_gene_name']):
+                                learning_rate=0.005, max_iter=5000, tolerance=2500, group_col=['Numbered_gene_name']):
     """
     Gradient descent to find optimal shrinkage factor S using squared error (SE).
     
@@ -226,9 +226,6 @@ def find_S_gradient_descent_se_given_base_cutoff(treated_df, untreated_df, input
         S: Optimal shrinkage factor
         cutoff_unt: Cutoff for untreated group (L = L' / S)
     """
-    print(f'group col is {group_col}')
-    print(f'learning rate is {learning_rate}')
-    print(f'tolerance is {tolerance}')
     untreated_inert_df = untreated_df[(untreated_df['gRNA'].isin(input_control_gRNA_list)) & (untreated_df['Cell_number'] > base_cutoff)]
     treated_inert_df = treated_df[treated_df['gRNA'].isin(input_control_gRNA_list)]
     
@@ -249,7 +246,7 @@ def find_S_gradient_descent_se_given_base_cutoff(treated_df, untreated_df, input
         print(f'Iteration {i}: S = {S}, SE Error = {se_error}')
         # If the error is within the tolerance, we can stop
         if se_error <= tolerance:
-            return S, cutoff_tr
+            return S, cutoff_tr, se_error
         
         # Gradient is proportional to the error
         gradient = -2 * error  # Derivative of (N_control_treated - N_control_untreated) ** 2
@@ -257,7 +254,7 @@ def find_S_gradient_descent_se_given_base_cutoff(treated_df, untreated_df, input
         # Update S based on the gradient
         S += learning_rate * gradient
     
-    return S, cutoff_tr  # Return the final value of S and cutoff for untreated group
+    return S, cutoff_tr, se_error  # Return the final value of S and cutoff for untreated group
 
 def objective(S, treated_df, untreated_df, input_control_gRNA_list, base_cutoff, group_col):
     """
@@ -287,13 +284,14 @@ def objective(S, treated_df, untreated_df, input_control_gRNA_list, base_cutoff,
     se_error = error ** 2
     return se_error
 
-def find_optimal_S(treated_df, untreated_df, input_control_gRNA_list, base_cutoff, group_col=['Numbered_gene_name']):
+def find_optimal_S(treated_df, untreated_df, input_control_gRNA_list, base_cutoff,group_col=['Sample_ID']):
     """
-    Finds the optimal S using scipy's minimize_scalar.
+    Finds the optimal S using scipy's minimize_scalar. Default maxiter is 500
     """
+    #print(f'group col is {group_col}')
     result = minimize_scalar(
         objective,
-        bounds=(0.01, 300),  # Adjust bounds based on domain knowledge
+        bounds=(0.01, 100),  # Adjust bounds based on domain knowledge
         args=(treated_df, untreated_df, input_control_gRNA_list, base_cutoff, group_col),
         method='bounded',
         options={'xatol': 1e-4}
@@ -302,9 +300,10 @@ def find_optimal_S(treated_df, untreated_df, input_control_gRNA_list, base_cutof
     if result.success:
         optimal_S = result.x
         optimal_cutoff_tr = base_cutoff * optimal_S
+        SE = result.fun
         print(f'Optimal S: {optimal_S}')
         print(f'Optimal Treated Cutoff (cutoff_tr): {optimal_cutoff_tr}')
-        print(f'Minimized SE Error: {result.fun}')
-        return optimal_S, optimal_cutoff_tr
+        print(f'Minimized SE Error: {SE}')
+        return optimal_S, optimal_cutoff_tr, SE
     else:
         raise ValueError("Optimization failed. Check the input data and parameters.")

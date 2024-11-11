@@ -184,20 +184,6 @@ def calculate_ScoreRGM(treated_df_cut, untreated_df_cut, ratio_dict, input_contr
                                                                                        
     return gm_treated_df
 
-def df_to_dict(df, key_col, value_col):
-    """
-    Convert specified DataFrame columns into a dictionary.
-
-    Parameters:
-    - df: to convert.
-    - key_col (str): The column to use as the dictionary's keys.
-    - value_col (str): The column to use as the dictionary's values.
-
-    Returns:
-    - dict: A dictionary mapping `key_col` to `value_col`.
-    """
-    return df.set_index(key_col)[value_col].to_dict()
-
 def Nested_Bootstrap_Index_single_vary_mouse_count(input_dic, mouse_number):
     """resample mice based on their indices
 

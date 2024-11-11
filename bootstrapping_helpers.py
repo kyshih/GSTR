@@ -1,11 +1,10 @@
 import pandas as pd
 import numpy as np
-from scipy.stats import rankdata
 import copy
 from metrics_helpers import *
 
 """
-    This module contains helpers for summarziing bs results
+    This module contains helpers for summarizing bs results
 """
 
 def Generate_Final_Summary_Dataframe(input_df,trait_of_interest): # gRNA level
@@ -111,17 +110,35 @@ def Find_Controls(input_gRNA_df, input_pattern):
     return(input_gRNA_df.loc[
         input_gRNA_df['Targeted_gene_name'].str.contains(input_pattern, na=False, regex=True),'gRNA'].unique())
     
-def Nested_Bootstrap_Index_single(input_dic):
-    # input_dic has {SampleID : [row_number that corresponds to a gRNA and read counts, etc]}
-    temp_sample_list = list(input_dic.keys()) # list of SampleIDs
-    # I first sample mouse
-    temp_list = np.random.choice(temp_sample_list,len(temp_sample_list),replace = True) # sample the SampleID with replacement
-    temp_coho = []
-    for y in temp_list: # within each mouse
-        temp_array = input_dic.get(y) # get index of gRNA read associated of that mouse. array of tuple, each is a (gRNA, clonal_barcode)
-        temp_resampled = np.random.choice(temp_array,len(temp_array),replace = True) # resample gRNA
-        temp_coho = np.concatenate([temp_coho,temp_resampled])
-    return(temp_coho)  
+# def Nested_Bootstrap_Index_single(input_dic):
+#     # input_dic has {SampleID : [row_number that corresponds to a gRNA and read counts, etc]}
+#     temp_sample_list = list(input_dic.keys()) # list of SampleIDs
+#     # I first sample mouse
+#     temp_list = np.random.choice(temp_sample_list,len(temp_sample_list),replace = True) # sample the SampleID with replacement
+#     temp_coho = []
+#     for y in temp_list: # within each mouse
+#         temp_array = input_dic.get(y) # get index of gRNA read associated of that mouse. array of tuple, each is a (gRNA, clonal_barcode)
+#         temp_resampled = np.random.choice(temp_array,len(temp_array),replace = True) # resample gRNA
+#         temp_coho = np.concatenate([temp_coho,temp_resampled])
+#     return(temp_coho)  
+
+def Nested_Bootstrap_Index_single(input_dic, random_state: int = None):
+    """
+    Performs nested bootstrap sampling on hierarchical dic.
+    First samples from top level (e.g., SampleIDs) then from their associated tumor indices.
+    Args:
+        data: Dictionary mapping identifiers to sequences of values
+    """
+    if random_state is not None:
+        np.random.seed(random_state)
+        
+    sampled_keys = np.random.choice(list(input_dic.keys()), size=len(input_dic), replace=True)
+    
+    resampled_indices = [
+        np.random.choice(input_dic[key], size=len(input_dic[key]), replace=True)
+        for key in sampled_keys ]
+    
+    return np.concatenate(resampled_indices)
 
 def Nested_Bootstrap_Index_Special_single(input_dic,input_df,input_total_gRNA_number): # for the control mice
     temp_sample_list = list(input_dic.keys())
@@ -129,14 +146,16 @@ def Nested_Bootstrap_Index_Special_single(input_dic,input_df,input_total_gRNA_nu
     temp_coho = []
     while len(set(input_df.loc[temp_coho].gRNA)) < input_total_gRNA_number: # stop until we reamples all the gRNA in the control mice. usually KT
         temp_list = np.random.choice(temp_sample_list,len(temp_sample_list),replace = True)
-        temp_coho = []
+        #temp_coho = []
+        temp_coho.clear()
         for y in temp_list: # within each mouse
             if y not in input_dic:
                 print(f"Mouse '{y}' not found in the mouse index dictionary.")
                 continue # skip to the next mouse if one mouse is not found in the dictionary
             temp_array = input_dic.get(y) # array of tuple, each is a (gRNA, clonal_barcode)
             temp_resampled = np.random.choice(temp_array,len(temp_array),replace = True)
-            temp_coho = np.concatenate([temp_coho,temp_resampled]) 
+            #temp_coho = np.concatenate([temp_coho,temp_resampled]) 
+            temp_coho.extend(temp_resampled.tolist())
     return(temp_coho)
 
 def get_excluded_samples_from_file(file_address):
