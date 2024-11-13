@@ -43,7 +43,16 @@ def parse_arguments():
 def main():
     args = parse_arguments()
     cutoff_list = [int(cutoff) for cutoff in args.cutoffs]
+    variant = args.variant
     
+    if args.verbose:
+        print(f"Verbose mode is ON")
+        # print(f"Input file: {args.input_file}")
+        # print(f"Output directory: {args.output_dir}")
+        print(f"Given base cutoff in untreated group, finding matching adjusted cutoff in treated groups")
+        print(f"Variant: {variant}")
+        print(f"Start processing tumors and calculate S...")
+        
     # Define file paths based on variant
     parent_address = '/oak/stanford/scg/lab_mwinslow/Karen/Bootstrapping_analysis/ADJ4_LORSHP2_050824/Input'
     output_address = '/oak/stanford/scg/lab_mwinslow/Karen/Bootstrapping_analysis/ADJ4_LORSHP2_050824/Output/S'
@@ -61,8 +70,8 @@ def main():
     
     # Load data using DataLoader
     data_loader = DataLoader(
-        raw_df_path=variant_files[args.variant]['data'],
-        discard_samples_path=variant_files[args.variant]['discard']
+        raw_df_path=variant_files[variant]['data'],
+        discard_samples_path=variant_files[variant]['discard']
     )
     
     raw_df_no_bad_samples = data_loader.load_and_exclude_samples()
@@ -96,8 +105,8 @@ def main():
     final_summary_df = pd.concat(all_summaries, ignore_index=True)
     
     # Save results
-    final_intermediate_df.to_csv(f'{output_address}/test/S_intermediate_given_base_cutoff_{args.variant}_mouse_level.csv', index=False)
-    final_summary_df.to_csv(f'{output_address}/test/S_summary_given_base_cutoff_{args.variant}_mouse_level.csv', index=False)
+    final_intermediate_df.to_csv(f'{output_address}/match_size_dist/S_intermediate_given_base_cutoff_{variant}.csv', index=False)
+    final_summary_df.to_csv(f'{output_address}/match_size_dist/S_summary_given_base_cutoff_{variant}.csv', index=False)
     
     if args.verbose:
         print("Processing complete. Results saved.")

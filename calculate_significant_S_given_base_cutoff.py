@@ -3,17 +3,20 @@
 
 import pandas as pd
 from bootstrapping_helpers import Generate_ref_input_df, Generate_Index_Dictionary, Nested_Bootstrap_Index_single, Nested_Bootstrap_Index_Special_single, Find_Controls, get_excluded_samples_from_file
-from find_S_helpers import find_S_given_base_cutoff, find_S_gradient_descent_L1_loss_given_base_cutoff, find_S_gradient_descent_se_given_base_cutoff, find_optimal_S
+#from find_S_helpers import find_S_given_base_cutoff, find_S_gradient_descent_L1_loss_given_base_cutoff, find_S_gradient_descent_se_given_base_cutoff, find_optimal_S
+#from find_S_matching_distribution import find_S
+from shrinkage_analysis.find_S_helpers_refactored import find_S
 import numpy as np
 import copy
 import argparse
 
 def bootstrap_shrinkage_given_base_cutoff(raw_treated_df,raw_untreated_df,cell_number_cutoff,input_control_gRNA_list,number_of_replicate,input_total_gRNA_number):
     # Estimate Shrinkage (S) and find basal cutoff
-    #S, adjusted_cutoff, SE = find_optimal_S(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
-    S, adjusted_cutoff, SE = find_S_gradient_descent_se_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+    #S, adjusted_cutoff, error = find_optimal_S(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+    #S, adjusted_cutoff, error = find_S_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+    S, adjusted_cutoff, error = find_S(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
     # Initialize list to store results
-    results = [{'Shrinkage': S, 'Bootstrap_id': 'Real', 'basal_cutoff': cell_number_cutoff, 'adjusted_cutoff': adjusted_cutoff, 'SE': SE}]
+    results = [{'Shrinkage': S, 'Bootstrap_id': 'Real', 'basal_cutoff': cell_number_cutoff, 'adjusted_cutoff': adjusted_cutoff, 'error': error}]
     
     if number_of_replicate!=0:
         # treated
@@ -28,12 +31,13 @@ def bootstrap_shrinkage_given_base_cutoff(raw_treated_df,raw_untreated_df,cell_n
             y = Nested_Bootstrap_Index_Special_single(Mouse_index_dic_2,raw_untreated_df,input_total_gRNA_number)
             temp_bootstrap_df_2 = raw_untreated_df.loc[y]
             # re-estimate S
-            #S, adjusted_cutoff, SE = find_optimal_S(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
-            S, adjusted_cutoff, SE = find_S_gradient_descent_se_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
+            #S, adjusted_cutoff, error = find_optimal_S(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
+            #S, adjusted_cutoff, error = find_S_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
+            S, adjusted_cutoff, error = find_S(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
             # Append the result for this bootstrap cycle
             results.append({'Shrinkage': S, 'Bootstrap_id': f'B{bootstrap_cycle}',
                             'basal_cutoff': cell_number_cutoff, 'adjusted_cutoff': adjusted_cutoff,
-                            'SE': SE})
+                            'error': error})
     
     return results
 
@@ -119,7 +123,7 @@ def main():
         cohort_1 = temp_input[(temp_input['Mouse_genotype'] == experiment_genotype)&(temp_input['Treatment'] == elem)]['Sample_ID'].unique()
         cohort_2 = temp_input[(temp_input['Mouse_genotype'] == control_genotype)&(temp_input['Treatment'] == control_treatment)]['Sample_ID'].unique()
         
-        interm_df, sum_df = find_significant_shrinkage_given_base_cutoff(temp_input, cohort_1, cohort_2, cutoff_list, control_gRNA_list, 100, sgRNA_number)
+        interm_df, sum_df = find_significant_shrinkage_given_base_cutoff(temp_input, cohort_1, cohort_2, cutoff_list, control_gRNA_list, 10, sgRNA_number)
         interm_df['Treatment'] = elem
         sum_df['Treatment'] = elem
         interm_df_list.append(interm_df)

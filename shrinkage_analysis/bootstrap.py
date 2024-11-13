@@ -9,8 +9,7 @@ from bootstrapping_helpers import (
     Nested_Bootstrap_Index_single,
     Nested_Bootstrap_Index_Special_single
 )
-#from find_S_helpers import find_optimal_S
-from find_S_matching_distribution import find_S
+from shrinkage_analysis.find_S_matching_distribution import find_S
 
 class BootstrapAnalyzer:
     def __init__(self, raw_treated_df: pd.DataFrame, raw_untreated_df: pd.DataFrame, 
@@ -39,13 +38,13 @@ class BootstrapAnalyzer:
 
     def _calculate_shrinkage(self) -> List[Dict]:
         #S, adjusted_cutoff, SE = find_optimal_S(self.treated_df, self.untreated_df, self.control_gRNA_list, self.cell_number_cutoff)
-        S, adjusted_cutoff, SE = find_S(self.treated_df, self.untreated_df, self.control_gRNA_list, self.cell_number_cutoff)
+        S, adjusted_cutoff, error = find_S(self.treated_df, self.untreated_df, self.control_gRNA_list, self.cell_number_cutoff)
         return [{
             'Shrinkage': S,
             'Bootstrap_id': 'Real',
             'basal_cutoff': self.cell_number_cutoff,
             'adjusted_cutoff': adjusted_cutoff,
-            'SE': SE
+            'error': error
         }]
 
     def _perform_single_bootstrap(self, treated_indices: Dict, untreated_indices: Dict, 
@@ -57,11 +56,11 @@ class BootstrapAnalyzer:
         temp_untreated = self.untreated_df.loc[untreated_sample]
         
         #S, adjusted_cutoff, SE = find_optimal_S(temp_treated, temp_untreated, self.control_gRNA_list, self.cell_number_cutoff)
-        S, adjusted_cutoff, SE = find_S(temp_treated, temp_untreated, self.control_gRNA_list, self.cell_number_cutoff)
+        S, adjusted_cutoff, error = find_S(temp_treated, temp_untreated, self.control_gRNA_list, self.cell_number_cutoff)
         return {
             'Shrinkage': S,
             'Bootstrap_id': f'B{len(treated_sample)}',  # Using len(treated_sample) as a unique ID
             'basal_cutoff': self.cell_number_cutoff,
             'adjusted_cutoff': adjusted_cutoff,
-            'SE': SE
+            'error': error
         }
