@@ -1,10 +1,13 @@
 from scipy.optimize import minimize_scalar
 import numpy as np
-''' This module calculate the treatment response S by matching median TTN per mouse in treated and untreated. 
-    L (base cutoff) is given, iteratively find L' in treated.
-    Parameters for GD might need to change to get sensible values (sometime S might be negative)
+
+''' This module calculates the treatment response S by matching median inert TTN per mouse in treated and untreated. 
+    - L (base cutoff) is given, iteratively find L' (adjusted cutoff) in treated.
+    - Note: GD params might need to change to get values within desired tolerance and precision but balanced with computation time.
+        - For GD, learning rate=0.05 and tolerance = 200 (for SE) or 20 (or 50 for L1) seem to work well
+        - if wanna match median inert tumors across mice, the assumption is that titers (hence TTN/mouse) and mouse number
+        per treatment arm is the same
 '''
-#TODO: still need to test out GD and minimize_scalar
 
 def calculate_error(treated_df, untreated_df, input_control_gRNA_list, cutoff_tr, base_cutoff, group_col, loss):
     """
@@ -96,9 +99,9 @@ def minimize_scalar_S(treated_df, untreated_df, input_control_gRNA_list, base_cu
     else:
         raise ValueError("Optimization failed. Check the input data and parameters.")
 
-def find_S(treated_df, untreated_df, input_control_gRNA_list, base_cutoff, group_col=['Numbered_gene_name'],
-           method="binary_search", loss="SE"):
-           #tolerance=20, learning_rate=0.003, max_iter=10000):
+def find_S(treated_df, untreated_df, input_control_gRNA_list, base_cutoff, group_col=['Sample_ID'],
+           method="gradient_descent", loss="L1", tolerance=50):
+           #learning_rate=0.003, max_iter=10000):
     """
     Wrapper to find optimal S using specified method and loss function.
     """

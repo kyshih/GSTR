@@ -1,13 +1,19 @@
-""" This module includes different versions of find_S functions to estimate GxE
-    test out these functions for your experiment to decide which one to use. You might need to modify learning rate
-    to avoid oscillations of errors esp in SE loss and in L1 loss to improve rate of convergence
+""" Archived find_S helper functions on 11-13-2024
+    This module includes different versions of find_S functions to estimate GxE
+    This version find the matching cutoff in treated with given base cutoff (given by the user).
+    Note: Test out these functions for your experiment to decide which one to use. You might need to modify learning rate
+    to avoid oscillations of errors esp in SE loss and in L1 loss to improve rate of convergence.
+    - Archive Reasons:
+    1. Refactored for improved modularity.
+    2. Contains wrapper functions to choose between losses (L1 or L2) and optimization approaches (binary search, GD, and minimize scalar).
+    3. Retaining older versions as a backup for debugging and in case refactored code breaks down.
 """
 from scipy.optimize import minimize_scalar
 
 # gRNA level median inert TTN
 def find_S_given_base_cutoff(treated_df, untreated_df, input_control_gRNA_list, base_cutoff, 
            upper=20, lower=0.01, precision=0.001, max_iter=100, tolerance=5, group_col=['Numbered_gene_name']):
-    """iterative function to find S based on given base cutoff (L) in untreated group
+    """ binary search (iterative) to find S based on given base cutoff (L) in untreated group
     move L' in the treated group to match median TTN of inert tumors in untreated group
     adjusted cutoff L' = base cutoff L * S
     Args:
@@ -87,8 +93,7 @@ def find_S_gradient_descent_L1_loss_given_base_cutoff(treated_df, untreated_df, 
 
 def find_S_gradient_descent_se_given_base_cutoff(treated_df, untreated_df, input_control_gRNA_list, base_cutoff,
                                 learning_rate=0.005, max_iter=5000, tolerance=2500, group_col=['Numbered_gene_name']):
-    """
-    Gradient descent to find optimal shrinkage factor S using squared error (SE).
+    """ Gradient descent to find optimal shrinkage factor S using squared error (SE).
     
     Args:
         treated_df: raw treated df pre cutoff

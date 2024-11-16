@@ -1,4 +1,6 @@
-""" This module finds significant shrinkage (S) by bootstrapping tumors across cutoffs
+""" This module finds significant shrinkage (S) by bootstrapping tumors across cutoffs.
+    It uses the archived find_S_helpers_given_adjusted_cutoff to find the adjusted cutoff L' in treated
+    based on the given base cutoff L in vehicle 
 """
 
 import pandas as pd

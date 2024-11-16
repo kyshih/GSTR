@@ -2,12 +2,12 @@
     Generate two null distributions of ScoreRTN
 - want to use null distribution of no GSTR to find p-value during bs
     1. null where all gRNAs have no GSTR and we treat all gRNAs as one gRNA. Then find one ScoreRTN for inerts and one for non-inerts
-    2. null where gRNA i has no GSTR and we treated gRNA i seperately. This gives us ScoreRTN for each gRNA
+    2. null where gRNA i has no GSTR and we treated gRNA i separately. This gives us ScoreRTN for each gRNA
 - Chuan's method:
     - upsample the untreated mice with replacement to match mouse no. in the treated group
     - shrink the untreated tumors by S estimated from the treated group
-    - apply the same cotoff as the treated group or the adjusted_cutoff given by me
-- alternative mthod -> I use this:
+    - apply the same cutoff as the treated group or the adjusted_cutoff given by me
+- alternative method -> I use this:
     - still upsample the untreated mice with replacement to match mouse no. in the treated group
     - use the basal_cutoff for the untreated group
         basal_cutoff = adjusted_cutoff / S

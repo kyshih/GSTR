@@ -9,8 +9,7 @@ from metrics_helpers import LN_Mean
 #TODO: test out calculate_ScoreRSize_metrics and function it uses
 
 def compute_top_N_per_sample(df, ratio_dict, input_control_gRNA_list):
-    '''
-    Generates a nested dictionary mapping each Sample_ID to a dictionary of gRNAs and their scaled TTN counts.
+    """Generates a nested dictionary mapping each Sample_ID to a dictionary of gRNAs and their scaled TTN counts.
     
     Params:
     - df: df containing the data with columns ['Sample_ID', 'gRNA', 'Clonal_barcode']
@@ -19,7 +18,7 @@ def compute_top_N_per_sample(df, ratio_dict, input_control_gRNA_list):
     
     Returns:
     - dict: Nested dictionary structured as {Sample_ID: {gRNA: scaled_TTN, ...}, ...}
-    '''
+    """
     top_N_tumors_dict = {}
     
     # Precompute the number of inert tumors per Sample_ID
@@ -41,7 +40,7 @@ def compute_top_N_per_sample(df, ratio_dict, input_control_gRNA_list):
 
 def find_ratio_to_inert(untreated_df, input_control_gRNA_list, count_cutoff=2):
     ''' 
-    the goal is to correct for mouse-to-mouse variability in calcualting RGM
+    the goal is to correct for mouse-to-mouse variability in calculating RGM
     by finding the ratio to inert per mouse then finding the median of the ratio for each gRNA
     return a ratio dict {gRNAi: Ri}
     '''

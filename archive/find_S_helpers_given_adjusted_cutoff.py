@@ -1,14 +1,18 @@
-'''Archived find_S functions
-    These functions set adjusted cutoff in treated group, and find the matching base cutoff in the untreated group.
-    find L (base cutoff) given L' (adjusted cutoff in treated)
+''' Archived find_S functions on 11-13-2024
+    - These functions set adjusted cutoff in treated group, and find the matching base cutoff in the untreated group.
+    - find L (base cutoff) given L' (adjusted cutoff in treated given by use).
+    - Note: Test out these functions for your experiment to decide which one to use. You might need to modify learning rate
+    to avoid oscillations of errors esp in SE loss and in L1 loss to improve rate of convergence.
+    - Archive Reasons:
+    1. Refactored for improved modularity.
+    2. Contains wrapper functions to choose between losses (L1 or L2) and optimization approaches (binary search, GD, and minimize scalar).
+    3. Retaining older versions as a backup for debugging and in case refactored code breaks down.
 '''
 
 def find_S(treated_df, untreated_df, input_control_gRNA_list, adjusted_cutoff, 
            upper=20, lower=0.01, precision=0.001, max_iter=100, tolerance=5, group_col=['Numbered_gene_name']):
-    """
-        iterative
-        move L in the untreated group to match median TTN of inert tumors in treated group
-        binary search
+    """ binary search (iterative) to find S based on given adjusted cutoff (L') in treated group
+        move L in the untreated group to match inert median TTN in treated group
         
         Args:
         treated_df: raw treated df pre cutoff
@@ -52,17 +56,17 @@ def find_S_gradient_descent_L1_loss(treated_df, untreated_df, input_control_gRNA
                             learning_rate=0.01, max_iter=5000, tolerance=5, group_col=['Numbered_gene_name']):
     """GD to find the optimal shrinkage factor S using L1 loss.
 
-    Args:
-        treated_df: raw treated df pre cutoff
-        untreated_df: raw untreated df pre cutoff
-        input_control_gRNA_list: List of inert gRNAs
-        adjusted_cutoff: Cell number cutoff for the treated group given by me
-        learning_rate: Step size for gradient descent
-        max_iter: Maximum number of iterations
-        tolerance: Minimum error difference to stop iteration
+        Args:
+            treated_df: raw treated df pre cutoff
+            untreated_df: raw untreated df pre cutoff
+            input_control_gRNA_list: List of inert gRNAs
+            adjusted_cutoff: Cell number cutoff for the treated group given by me
+            learning_rate: Step size for gradient descent
+            max_iter: Maximum number of iterations
+            tolerance: Minimum error difference to stop iteration
 
-    Returns:
-        S, cutoff_unt: Optimal shrinkage factor, Cutoff for the untreated group
+        Returns:
+            S, cutoff_unt: Optimal shrinkage factor, Cutoff for the untreated group
     """
     treated_inert_df = treated_df[(treated_df['gRNA'].isin(input_control_gRNA_list)) & (treated_df['Cell_number'] > adjusted_cutoff)]
     untreated_inert_df = untreated_df[untreated_df['gRNA'].isin(input_control_gRNA_list)]
@@ -84,20 +88,19 @@ def find_S_gradient_descent_L1_loss(treated_df, untreated_df, input_control_gRNA
 
 def find_S_gradient_descent_se(treated_df, untreated_df, input_control_gRNA_list, adjusted_cutoff, 
                                 learning_rate=0.001, max_iter=5000, tolerance=25, group_col=['Numbered_gene_name']):
-    """
-    Gradient descent to find optimal shrinkage factor S using squared error (SE).
+    """ Gradient descent to find optimal shrinkage factor S using squared error (SE).
     
-    Args:
-        treated_df: raw treated df pre cutoff
-        untreated_df: raw untreated df pre cutoff
-        adjusted_cutoff: Cell number cutoff for the treated group
-        learning_rate: Step size for gradient descent
-        max_iter: Maximum number of iterations
-        tolerance: Minimum error difference to stop iteration
-    
-    Returns:
-        S: Optimal shrinkage factor
-        cutoff_unt: Cutoff for untreated group (L = L' / S)
+        Args:
+            treated_df: raw treated df pre cutoff
+            untreated_df: raw untreated df pre cutoff
+            adjusted_cutoff: Cell number cutoff for the treated group
+            learning_rate: Step size for gradient descent
+            max_iter: Maximum number of iterations
+            tolerance: Minimum error difference to stop iteration
+        
+        Returns:
+            S: Optimal shrinkage factor
+            cutoff_unt: Cutoff for untreated group (L = L' / S)
     """
     treated_inert_df = treated_df[(treated_df['gRNA'].isin(input_control_gRNA_list)) & (treated_df['Cell_number'] > adjusted_cutoff)]
     untreated_inert_df = untreated_df[untreated_df['gRNA'].isin(input_control_gRNA_list)]

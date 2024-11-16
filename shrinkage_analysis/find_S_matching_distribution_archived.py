@@ -3,8 +3,6 @@
 import numpy as np
 from scipy.optimize import minimize_scalar
 from scipy.stats import ks_2samp
-#TODO: L1 doesnt work
-#TODO: need to test GD
 
 def calculate_percentiles(df, cutoff, gRNAs, percentiles, group_col):
     """
@@ -15,9 +13,7 @@ def calculate_percentiles(df, cutoff, gRNAs, percentiles, group_col):
     if filtered_df.empty:
         print("cutoff is too high. df is empty.")
         return None
-    if group_col is not None and group_col not in df.columns:
-        raise ValueError(f"group_col '{group_col}' is invalid.")
-    elif group_col:
+    if group_col:
         # Calculate percentiles within each group and take the median across groups
         return filtered_df.groupby(group_col)['Cell_number'].apply(lambda x: np.percentile(x, percentiles))
     else:
@@ -26,11 +22,8 @@ def calculate_percentiles(df, cutoff, gRNAs, percentiles, group_col):
 def ks_loss(treated_df, untreated_df, cutoff_tr, base_cutoff, input_control_gRNA_list):
     treated_filtered_df = treated_df[(treated_df['Cell_number']>cutoff_tr)&(treated_df['gRNA'].isin(input_control_gRNA_list))]['Cell_number']
     untreated_filtered_df = untreated_df[(untreated_df['Cell_number']>base_cutoff)&(untreated_df['gRNA'].isin(input_control_gRNA_list))]['Cell_number']
-    if treated_filtered_df.empty or untreated_filtered_df.empty:
-        print("One of the filtered DataFrames is empty. Skipping this value of S.")
-        return np.inf  # Return a high loss value
-    ks_stat, pval = ks_2samp(treated_filtered_df, untreated_filtered_df)
-    print(f'ks stats is {ks_stat} and {pval}')
+    ks_stat, _ = ks_2samp(treated_filtered_df, untreated_filtered_df)
+    print(f'ks stats is {ks_stat} and {_}')
     return ks_stat
 
 def objective(S, treated_df, untreated_df, input_control_gRNA_list, base_cutoff, percentiles, group_col, loss):
@@ -40,21 +33,13 @@ def objective(S, treated_df, untreated_df, input_control_gRNA_list, base_cutoff,
     # Adjust cutoff for treated group
     cutoff_tr = base_cutoff * S
     #cutoff_tr = base_cutoff / S
+    
     if loss == 'ks':
         score = ks_loss(treated_df, untreated_df, cutoff_tr, base_cutoff, input_control_gRNA_list)
         return score
     # Calculate percentiles for both treated and vehicle groups
-    # growing treated tumors
-    # treated_df_temp = treated_df[treated_df['gRNA'].isin(input_control_gRNA_list)].copy()
-    # treated_df_temp['Cell_number'] = treated_df_temp['Cell_number'] * S
-    # treated_percentiles = calculate_percentiles(treated_df_temp, base_cutoff, input_control_gRNA_list, percentiles, group_col)
-    # vehicle_percentiles = calculate_percentiles(untreated_df, base_cutoff, input_control_gRNA_list, percentiles, group_col)
-    # shrinking untreated tumors
-    untreated_df_temp = untreated_df[untreated_df['gRNA'].isin(input_control_gRNA_list)].copy()
-    untreated_df_temp['Cell_number'] = untreated_df_temp['Cell_number'] * S
-    print(f"Before calling calculate_percentiles: group_col = {group_col}")
     treated_percentiles = calculate_percentiles(treated_df, cutoff_tr, input_control_gRNA_list, percentiles, group_col)
-    vehicle_percentiles = calculate_percentiles(untreated_df_temp, cutoff_tr, input_control_gRNA_list, percentiles, group_col)
+    vehicle_percentiles = calculate_percentiles(untreated_df, base_cutoff, input_control_gRNA_list, percentiles, group_col)
     
     if treated_percentiles is None or vehicle_percentiles is None:
         print("Skipping this S value due to empty untreated group after filtering.")
@@ -67,12 +52,12 @@ def objective(S, treated_df, untreated_df, input_control_gRNA_list, base_cutoff,
         score = np.sum(abs(treated_percentiles - vehicle_percentiles))    
     return score
 
-def minimize_scalar_S(treated_df, untreated_df, input_control_gRNA_list, base_cutoff, percentiles, group_col, loss):
+def minimize_scalar_S(treated_df, untreated_df, input_control_gRNA_list, base_cutoff, percentiles, group_col, loss="ks"):
     # Use minimize_scalar to find the optimal S
     result = minimize_scalar(
         objective,
-        bounds=(0.01, 5),  # Adjust bounds as necessary for your data
-        args=(treated_df, untreated_df, input_control_gRNA_list,base_cutoff, percentiles, group_col, loss),
+        bounds=(0.01, 200),  # Adjust bounds as necessary for your data
+        args=(treated_df, untreated_df, input_control_gRNA_list, base_cutoff, percentiles, group_col, loss),
         method='bounded',
         options={'xatol': 1e-4}
     )
@@ -104,12 +89,11 @@ def GD_S(treated_df, untreated_df, input_control_gRNA_list, base_cutoff, percent
         S -= learning_rate * gradient
     return S, cutoff_tr, error
     
-def find_S(treated_df, untreated_df, gRNAs, base_cutoff, percentiles=[90], group_col=None,
-           method='minimize_scalar', loss="L1"):
+def find_S(treated_df, untreated_df, gRNAs, base_cutoff, percentiles=[80, 90, 95], group_col=None,
+           method='GD', loss="L1"):
     """
     Find the optimal S value to match the percentile distribution of treated and vehicle groups.
     """
-    print(f"Inside find_S: group_col = {group_col}, loss = {loss}")
     if method == "minimize_scalar":
         return minimize_scalar_S(treated_df, untreated_df, gRNAs, base_cutoff, percentiles, group_col, loss)
     elif method == "GD":

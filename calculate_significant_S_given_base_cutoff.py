@@ -5,7 +5,7 @@ import pandas as pd
 from bootstrapping_helpers import Generate_ref_input_df, Generate_Index_Dictionary, Nested_Bootstrap_Index_single, Nested_Bootstrap_Index_Special_single, Find_Controls, get_excluded_samples_from_file
 #from find_S_helpers import find_S_given_base_cutoff, find_S_gradient_descent_L1_loss_given_base_cutoff, find_S_gradient_descent_se_given_base_cutoff, find_optimal_S
 #from find_S_matching_distribution import find_S
-from shrinkage_analysis.find_S_helpers_refactored import find_S
+from shrinkage_analysis.find_S_matching_median_TTN import find_S
 import numpy as np
 import copy
 import argparse
@@ -123,7 +123,7 @@ def main():
         cohort_1 = temp_input[(temp_input['Mouse_genotype'] == experiment_genotype)&(temp_input['Treatment'] == elem)]['Sample_ID'].unique()
         cohort_2 = temp_input[(temp_input['Mouse_genotype'] == control_genotype)&(temp_input['Treatment'] == control_treatment)]['Sample_ID'].unique()
         
-        interm_df, sum_df = find_significant_shrinkage_given_base_cutoff(temp_input, cohort_1, cohort_2, cutoff_list, control_gRNA_list, 10, sgRNA_number)
+        interm_df, sum_df = find_significant_shrinkage_given_base_cutoff(temp_input, cohort_1, cohort_2, cutoff_list, control_gRNA_list, 100, sgRNA_number)
         interm_df['Treatment'] = elem
         sum_df['Treatment'] = elem
         interm_df_list.append(interm_df)

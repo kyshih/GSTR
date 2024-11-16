@@ -6,16 +6,19 @@ import numpy as np
 from shrinkage_analysis.data_loader import DataLoader
 from shrinkage_analysis.bootstrap import BootstrapAnalyzer
 from shrinkage_analysis.data_utils import filter_df
+from shrinkage_analysis.find_S_matching_median_TTN import find_S as find_S_matching_median_TTN
+from shrinkage_analysis.find_S_matching_distribution import find_S as find_S_matching_distribution
 
-def find_significant_shrinkage_given_base_cutoff(raw_df, sample_list1, sample_list2, cutoff_list, control_gRNA_list, n_replicates, total_gRNA_count):
+def find_significant_shrinkage_given_base_cutoff(raw_df, sample_list1, sample_list2, cutoff_list, control_gRNA_list,
+                                                 objective, method, find_S_version, n_replicates, total_gRNA_count):
     treated_df = filter_df(raw_df, 'Sample_ID', sample_list1, exclude=False)
     untreated_df = filter_df(raw_df, 'Sample_ID', sample_list2, exclude=False)
 
     all_results = []
     for cutoff in cutoff_list:
         print(f'Processing cutoff {cutoff}...')
-        analyzer = BootstrapAnalyzer(treated_df, untreated_df, control_gRNA_list, cutoff)
-        results_df = pd.DataFrame(analyzer.generate_bootstrap_samples(n_replicates, total_gRNA_count))
+        analyzer = BootstrapAnalyzer(treated_df, untreated_df, control_gRNA_list, cutoff, find_S_version)
+        results_df = pd.DataFrame(analyzer.generate_bootstrap_samples(n_replicates, total_gRNA_count, obj=objective, method=method))
         all_results.append(results_df)
         
     final_results_df = pd.concat(all_results, ignore_index=True)
@@ -37,6 +40,10 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Bootstrap shrinkage analysis across cutoffs')
     parser.add_argument('-var', '--variant', choices=['v1', 'v3'], required=True, help='EA variant to run')
     parser.add_argument('-l', '--cutoffs', nargs='+', required=True, help='List of base cutoffs')
+    parser.add_argument('-match', '--match_criteria', required=True, help='matching criteria fo find shrinkage')
+    parser.add_argument('-obj', '--objective', required=True, help='objective function to minimize')
+    parser.add_argument('-m', '--method', required=False, help='optimization method')
+    parser.add_argument('-o', '--output', required=False, help='output address')
     parser.add_argument('--verbose', action='store_true', help='Enable verbose output')
     return parser.parse_args()
 
@@ -44,6 +51,12 @@ def main():
     args = parse_arguments()
     cutoff_list = [int(cutoff) for cutoff in args.cutoffs]
     variant = args.variant
+    if args.match_criteria == "median_inert_TTN":
+        imported_find_S = find_S_matching_median_TTN
+    elif args.match_criteria == "inert_size_dist":
+        imported_find_S = find_S_matching_distribution
+    else:
+        raise ValueError(f"Invalid match_criteria: {args.match_criteria}")
     
     if args.verbose:
         print(f"Verbose mode is ON")
@@ -52,6 +65,9 @@ def main():
         print(f"Given base cutoff in untreated group, finding matching adjusted cutoff in treated groups")
         print(f"Variant: {variant}")
         print(f"Start processing tumors and calculate S...")
+        print(f"matching criteria: {args.match_criteria}")
+        print(f"objective is {args.objective}")
+        print(f"Optimization method: {args.method}")
         
     # Define file paths based on variant
     parent_address = '/oak/stanford/scg/lab_mwinslow/Karen/Bootstrapping_analysis/ADJ4_LORSHP2_050824/Input'
@@ -93,8 +109,8 @@ def main():
         control_samples = filtered_raw_df.query("Mouse_genotype == @control_genotype & Treatment == @control_treatment")['Sample_ID'].unique()
         
         intermediate_df, summary_df = find_significant_shrinkage_given_base_cutoff(
-            filtered_raw_df, treated_samples, control_samples, cutoff_list, control_gRNA_list, n_replicates=100, total_gRNA_count=total_gRNAs
-        )
+            filtered_raw_df, treated_samples, control_samples, cutoff_list, control_gRNA_list, args.objective, args.method, imported_find_S,
+            n_replicates=10, total_gRNA_count=total_gRNAs)
         
         intermediate_df['Treatment'] = treatment
         summary_df['Treatment'] = treatment
@@ -105,8 +121,8 @@ def main():
     final_summary_df = pd.concat(all_summaries, ignore_index=True)
     
     # Save results
-    final_intermediate_df.to_csv(f'{output_address}/match_size_dist/S_intermediate_given_base_cutoff_{variant}.csv', index=False)
-    final_summary_df.to_csv(f'{output_address}/match_size_dist/S_summary_given_base_cutoff_{variant}.csv', index=False)
+    final_intermediate_df.to_csv(f'{output_address}/match_size_dist/S_intermediate_given_base_cutoff_{variant}_{args.objective}.csv', index=False)
+    final_summary_df.to_csv(f'{output_address}/match_size_dist/S_summary_given_base_cutoff_{variant}_{args.objective}.csv', index=False)
     
     if args.verbose:
         print("Processing complete. Results saved.")
