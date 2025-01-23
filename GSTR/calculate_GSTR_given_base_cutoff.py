@@ -11,7 +11,7 @@ import argparse
 from find_S_helpers import find_S_gradient_descent_se_given_base_cutoff
 
 def bootstrap_GSTR_and_shrinkage(raw_df,input_sample_list1,input_sample_list2,cell_number_cutoff,input_control_gRNA_list,number_of_replicate,input_total_gRNA_number):
-    # cell_number_cutoff is for treated (adjusted cutoff). This is given by me
+    # cell_number_cutoff is for untreated (adjusted cutoff). This is given by me
     # first find S and untreated (basal) cutoff
     raw_treated_df = Generate_ref_input_df(raw_df,input_sample_list1,0) # this subset df based on cutoff
     raw_untreated_df = Generate_ref_input_df(raw_df,input_sample_list2,0)
@@ -20,9 +20,10 @@ def bootstrap_GSTR_and_shrinkage(raw_df,input_sample_list1,input_sample_list2,ce
     R_dict = find_ratio_to_inert(raw_untreated_df, input_control_gRNA_list)
     print(f"observed ratio dict is {R_dict}")
     # estimate S
-    S, adj_cutoff = find_S_gradient_descent_se_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+    # S, adj_cutoff = find_S_gradient_descent_se_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
     # return tumor size metric of each bootstrap cycle
     # applying the cell no. cutoff
+    adj_cutoff = cell_number_cutoff
     # treated mouse   
     temp_ref_df1 = Generate_ref_input_df(raw_df,input_sample_list1,adj_cutoff)
     # untreated mouse
@@ -30,7 +31,7 @@ def bootstrap_GSTR_and_shrinkage(raw_df,input_sample_list1,input_sample_list2,ce
     
     # dfs passed are post cutoff
     temp_final_df_observed = calculate_GSTR_metrics(temp_ref_df1, temp_ref_df2, input_control_gRNA_list, R_dict)
-    temp_final_df_observed['Shrinkage'] = S
+    #temp_final_df_observed['Shrinkage'] = S
     temp_final_df_observed['Bootstrap_id'] = 'Real' # a new columns named Bootstrap_id. The values of the column are 'Real'
     
     # for concatenating dfs later
@@ -53,12 +54,13 @@ def bootstrap_GSTR_and_shrinkage(raw_df,input_sample_list1,input_sample_list2,ce
             R_dict = find_ratio_to_inert(temp_bootstrap_df_2, input_control_gRNA_list)
             print(f"bs {bootstrap_cycle} ratio dict is {R_dict}")
             # re-estimate S
-            S, adj_cutoff = find_S_gradient_descent_se_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
+            adj_cutoff = cell_number_cutoff
+            #S, adj_cutoff = find_S_gradient_descent_se_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
             temp_bootstrap_ref_df1 = Generate_ref_input_df(temp_bootstrap_df_1, temp_bootstrap_df_1['Sample_ID'].unique(), adj_cutoff) # treated
             temp_bootstrap_ref_df2 = Generate_ref_input_df(temp_bootstrap_df_2, temp_bootstrap_df_2['Sample_ID'].unique(), cell_number_cutoff) # untreated
             
             temp_metric_df = calculate_GSTR_metrics(temp_bootstrap_ref_df1, temp_bootstrap_ref_df2, input_control_gRNA_list, R_dict)
-            temp_metric_df['Shrinkage'] = S
+            #temp_metric_df['Shrinkage'] = S
             temp_metric_df['Bootstrap_id'] = 'B'+str(bootstrap_cycle)
             
             temp_out_df.append(temp_metric_df)
@@ -71,10 +73,11 @@ def calculate_GSTR_metrics(treated_df,untreated_df,input_control_gRNA_list, rati
     # treated and untreated dfs are post cutoff
     treated_sum_df = treated_df.groupby(['gRNA']).Clonal_barcode.count().reset_index(name='TTN')
     untreated_sum_df = untreated_df.groupby(['gRNA']).Clonal_barcode.count().reset_index(name='TTN')
-    ScoreRTN_df = calculate_ScoreRTN(treated_sum_df, untreated_sum_df, input_control_gRNA_list)
+    #ScoreRTN_df = calculate_ScoreRTN(treated_sum_df, untreated_sum_df, input_control_gRNA_list)
     ScoreRGM_df = calculate_ScoreRGM(treated_df, untreated_df, ratio_dict, input_control_gRNA_list)
-    df_merged = ScoreRGM_df.merge(ScoreRTN_df, on='gRNA', how='outer')
-    return df_merged
+    #df_merged = ScoreRGM_df.merge(ScoreRTN_df, on='gRNA', how='outer')
+    #return df_merged
+    return ScoreRGM_df
 
 def main():
     parser = argparse.ArgumentParser(description='A function to do resampling of mice')

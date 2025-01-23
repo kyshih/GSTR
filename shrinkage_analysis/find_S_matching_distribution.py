@@ -3,7 +3,6 @@
 import numpy as np
 from scipy.optimize import minimize_scalar
 from scipy.stats import ks_2samp
-#TODO: L1 doesnt work
 #TODO: need to test GD
 
 def calculate_percentiles(df, cutoff, gRNAs, percentiles, group_col):
@@ -52,7 +51,7 @@ def objective(S, treated_df, untreated_df, input_control_gRNA_list, base_cutoff,
     # shrinking untreated tumors
     untreated_df_temp = untreated_df[untreated_df['gRNA'].isin(input_control_gRNA_list)].copy()
     untreated_df_temp['Cell_number'] = untreated_df_temp['Cell_number'] * S
-    print(f"Before calling calculate_percentiles: group_col = {group_col}")
+    #print(f"Before calling calculate_percentiles: group_col = {group_col}")
     treated_percentiles = calculate_percentiles(treated_df, cutoff_tr, input_control_gRNA_list, percentiles, group_col)
     vehicle_percentiles = calculate_percentiles(untreated_df_temp, cutoff_tr, input_control_gRNA_list, percentiles, group_col)
     
@@ -85,7 +84,7 @@ def minimize_scalar_S(treated_df, untreated_df, input_control_gRNA_list, base_cu
         raise ValueError("Optimization failed. Check the input data and parameters.")    
 
 def GD_S(treated_df, untreated_df, input_control_gRNA_list, base_cutoff, percentiles, group_col,
-                       learning_rate=0.001, max_iter=10000, tolerance=300, epsilon=0.5, loss="L1"):
+                       learning_rate=0.05, max_iter=1000, tolerance=50, epsilon=0.05, loss="L1"):
     S = 1
     for i in range(max_iter):
         error = objective(S, treated_df, untreated_df, input_control_gRNA_list, base_cutoff, percentiles, group_col, loss)

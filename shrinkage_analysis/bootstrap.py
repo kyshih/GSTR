@@ -59,7 +59,8 @@ class BootstrapAnalyzer:
         temp_untreated = self.untreated_df.loc[untreated_sample]
         
         #S, adjusted_cutoff, SE = find_optimal_S(temp_treated, temp_untreated, self.control_gRNA_list, self.cell_number_cutoff)
-        S, adjusted_cutoff, error = self.find_S(temp_treated, temp_untreated, self.control_gRNA_list, self.cell_number_cutoff, method, obj)
+        S, adjusted_cutoff, error = self.find_S(treated_df=temp_treated, untreated_df=temp_untreated, gRNAs=self.control_gRNA_list, 
+                                                base_cutoff=self.cell_number_cutoff, method=method, loss=obj)
         return {
             'Shrinkage': S,
             'Bootstrap_id': f'B{len(treated_sample)}',  # Using len(treated_sample) as a unique ID
