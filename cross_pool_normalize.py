@@ -7,8 +7,8 @@ from UltraSeq_Bootstrapping_EA_drug import Generate_Final_Summary_Dataframe,Gene
 
 def add_cohort_specific_relative_metrics_cross_pool(input_df1, input_df2, input_control_list):
     # Make copies of the dataframes to avoid altering the original data
-    input_df1 = input_df1.copy(deep=True)
-    input_df2 = input_df2.copy(deep=True)
+    input_df1 = input_df1.copy()
+    input_df2 = input_df2.copy()
     
     # Filter the untreated DataFrame to get the inert guides. normalization factor is the median of group2-usually inert base or untreated
     temp_sub = input_df2[input_df2['gRNA'].isin(input_control_list)] 

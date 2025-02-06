@@ -109,18 +109,6 @@ def Find_Controls(input_gRNA_df, input_pattern):
     # input_pattern is a regex expression 
     return(input_gRNA_df.loc[
         input_gRNA_df['Targeted_gene_name'].str.contains(input_pattern, na=False, regex=True),'gRNA'].unique())
-    
-# def Nested_Bootstrap_Index_single(input_dic):
-#     # input_dic has {SampleID : [row_number that corresponds to a gRNA and read counts, etc]}
-#     temp_sample_list = list(input_dic.keys()) # list of SampleIDs
-#     # I first sample mouse
-#     temp_list = np.random.choice(temp_sample_list,len(temp_sample_list),replace = True) # sample the SampleID with replacement
-#     temp_coho = []
-#     for y in temp_list: # within each mouse
-#         temp_array = input_dic.get(y) # get index of gRNA read associated of that mouse. array of tuple, each is a (gRNA, clonal_barcode)
-#         temp_resampled = np.random.choice(temp_array,len(temp_array),replace = True) # resample gRNA
-#         temp_coho = np.concatenate([temp_coho,temp_resampled])
-#     return(temp_coho)  
 
 def Nested_Bootstrap_Index_single(input_dic, random_state: int = None):
     """
@@ -131,7 +119,7 @@ def Nested_Bootstrap_Index_single(input_dic, random_state: int = None):
     """
     if random_state is not None:
         np.random.seed(random_state)
-        
+    
     sampled_keys = np.random.choice(list(input_dic.keys()), size=len(input_dic), replace=True)
     
     resampled_indices = [
@@ -144,13 +132,14 @@ def Nested_Bootstrap_Index_Special_single(input_dic,input_df,input_total_gRNA_nu
     temp_sample_list = list(input_dic.keys())
     # I first sample mouse
     temp_coho = []
+    
     while len(set(input_df.loc[temp_coho].gRNA)) < input_total_gRNA_number: # stop until we reamples all the gRNA in the control mice. usually KT
         temp_list = np.random.choice(temp_sample_list,len(temp_sample_list),replace = True)
-        #temp_coho = []
-        temp_coho.clear()
+        temp_coho = []
+        #temp_coho.clear()
         for y in temp_list: # within each mouse
             if y not in input_dic:
-                print(f"Mouse '{y}' not found in the mouse index dictionary.")
+                print(f"Mouse {y} not found in the mouse index dictionary. Skipping {y}")
                 continue # skip to the next mouse if one mouse is not found in the dictionary
             temp_array = input_dic.get(y) # array of tuple, each is a (gRNA, clonal_barcode)
             temp_resampled = np.random.choice(temp_array,len(temp_array),replace = True)
