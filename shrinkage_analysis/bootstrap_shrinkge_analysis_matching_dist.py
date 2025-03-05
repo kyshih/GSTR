@@ -2,7 +2,7 @@ import pandas as pd
 import argparse
 import numpy as np
 import sys
-sys.path.append('.')
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from shrinkage_analysis.data_loader import DataLoader
 from shrinkage_analysis.bootstrap_matching_dist import BootstrapAnalyzer
 from shrinkage_analysis.data_utils import filter_df
@@ -84,47 +84,47 @@ def main():
     variant_files = {
         'v1': {
             'data': f'{parent_address}/EA_drug_final_df_v1.csv',
-            #'discard': f'{parent_address}/Discarded_sample_list_for_EA_drug_v1.txt'
-            'discard': f'{parent_address}/Discarded_sample_list_for_EA_drug.txt'
+            'discard': f'{parent_address}/Discarded_sample_list_for_EA_drug_v1.txt'
+            #'discard': f'{parent_address}/Discarded_sample_list_for_EA_drug.txt'
         },
         'v3': {
             'data': f'{parent_address}/EA_drug_final_df_v3.csv',
-            #'discard': f'{parent_address}/Discarded_sample_list_for_EA_drug_v3.txt'
-            'discard': f'{parent_address}/Discarded_sample_list_for_EA_drug.txt'
+            'discard': f'{parent_address}/Discarded_sample_list_for_EA_drug_v3.txt'
+            #'discard': f'{parent_address}/Discarded_sample_list_for_EA_drug.txt'
         }
     }
     
     # Load data using DataLoader
-    # data_loader = DataLoader(
-    #     raw_df_path=variant_files[variant]['data'],
-    #     discard_samples_path=variant_files[variant]['discard']
+    data_loader = DataLoader(
+        raw_df_path=variant_files[variant]['data'],
+        discard_samples_path=variant_files[variant]['discard']
+    )
+    # data_loader_v1 = DataLoader(
+    #     raw_df_path=variant_files['v1']['data'],
+    #     discard_samples_path=variant_files['v1']['discard']
     # )
-    data_loader_v1 = DataLoader(
-        raw_df_path=variant_files['v1']['data'],
-        discard_samples_path=variant_files['v1']['discard']
-    )
-    data_loader_v3 = DataLoader(
-        raw_df_path=variant_files['v3']['data'],
-        discard_samples_path=variant_files['v3']['discard']
-    )
+    # data_loader_v3 = DataLoader(
+    #     raw_df_path=variant_files['v3']['data'],
+    #     discard_samples_path=variant_files['v3']['discard']
+    # )
     
-    # raw_df_no_bad_samples = data_loader.load_and_exclude_samples()
-    # filtered_raw_df = data_loader.get_gRNA_data(raw_df_no_bad_samples)
-    # control_gRNA_list = data_loader.find_control_gRNAs(filtered_raw_df)
-    # total_gRNAs = filtered_raw_df['gRNA'].nunique()
+    raw_df_no_bad_samples = data_loader.load_and_exclude_samples()
+    filtered_raw_df = data_loader.get_gRNA_data(raw_df_no_bad_samples)
+    control_gRNA_list = data_loader.find_control_gRNAs(filtered_raw_df)
+    total_gRNAs = filtered_raw_df['gRNA'].nunique()
     
-    raw_df_no_bad_samples_v1 = data_loader_v1.load_and_exclude_samples()
-    filtered_raw_df_v1 = data_loader_v1.get_gRNA_data(raw_df_no_bad_samples_v1)
-    filtered_raw_df_v1['Variant'] = 'v1'
+    # raw_df_no_bad_samples_v1 = data_loader_v1.load_and_exclude_samples()
+    # filtered_raw_df_v1 = data_loader_v1.get_gRNA_data(raw_df_no_bad_samples_v1)
+    # filtered_raw_df_v1['Variant'] = 'v1'
     
-    raw_df_no_bad_samples_v3 = data_loader_v3.load_and_exclude_samples()
-    filtered_raw_df_v3 = data_loader_v3.get_gRNA_data(raw_df_no_bad_samples_v3)
-    filtered_raw_df_v3['Variant'] = 'v3'
+    # raw_df_no_bad_samples_v3 = data_loader_v3.load_and_exclude_samples()
+    # filtered_raw_df_v3 = data_loader_v3.get_gRNA_data(raw_df_no_bad_samples_v3)
+    # filtered_raw_df_v3['Variant'] = 'v3'
     
-    control_gRNA_list = data_loader_v3.find_control_gRNAs(filtered_raw_df_v3)
-    total_gRNAs = filtered_raw_df_v3['gRNA'].nunique()
+    # control_gRNA_list = data_loader_v3.find_control_gRNAs(filtered_raw_df_v3)
+    # total_gRNAs = filtered_raw_df_v3['gRNA'].nunique()
     
-    filtered_raw_df = pd.concat([filtered_raw_df_v1, filtered_raw_df_v3], ignore_index=True)
+    # filtered_raw_df = pd.concat([filtered_raw_df_v1, filtered_raw_df_v3], ignore_index=True)
     
     # Filtered data based on genotype and treatment
     exp_genotype, control_genotype = 'CE', 'CE'

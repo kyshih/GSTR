@@ -1,18 +1,23 @@
 """
 I adapted Emily's GSTR calculation to find S and find RTN and ScoreRTN with bootstrapping.
 This is different from scale_metrics_to_inert_base in following ways:
-1. S is re-estimated using binary search in each bs cycle
+1. S is re-estimated by using ks stats (min vertical distance between CDFs)
 2. p-value is calculated by comparing the bootstrapped statistics to the null distribution
+3. cell number cutoff is given to treated group
 """
-from bootstrapping_helpers import *
-from metrics_helpers import *
-from GSTR_helpers import *
+import sys
+import os
+# Add the parent directory (Python/) to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from utils.bootstrapping_helpers import *
+#from metrics_helpers import *
+from GSTR.GSTR_helpers import *
 import argparse
-#from find_S_helpers import find_S_gradient_descent_se_given_base_cutoff
+#from find_S_helpers import find_S_gradient_descent_se
 from shrinkage_analysis.find_S_cdf import find_optimal_S_grid
 
 def bootstrap_GSTR_and_shrinkage(raw_df,input_sample_list1,input_sample_list2,cell_number_cutoff,input_control_gRNA_list,number_of_replicate,input_total_gRNA_number):
-    # cell_number_cutoff is for untreated (adjusted cutoff). This is given by me
+    # cell_number_cutoff is for treated (adjusted cutoff). This is given by me
     # first find S and untreated (basal) cutoff
     raw_treated_df = Generate_ref_input_df(raw_df,input_sample_list1,0) # this subset df based on cutoff
     raw_untreated_df = Generate_ref_input_df(raw_df,input_sample_list2,0)
@@ -21,23 +26,24 @@ def bootstrap_GSTR_and_shrinkage(raw_df,input_sample_list1,input_sample_list2,ce
     R_dict = find_ratio_to_inert(raw_untreated_df, input_control_gRNA_list)
     print(f"observed ratio dict is {R_dict}")
     # estimate S
-    # S, adj_cutoff = find_S_gradient_descent_se_given_base_cutoff(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+    #S, basal_cutoff = find_S(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+    #S, basal_cutoff = find_S_gradient_descent_se(raw_treated_df, raw_untreated_df, input_control_gRNA_list, cell_number_cutoff)
+    raw_untreated_df_inert = raw_untreated_df[raw_untreated_df['gRNA'].isin(input_control_gRNA_list)]
     raw_treated_df_inert = raw_treated_df[raw_treated_df['gRNA'].isin(input_control_gRNA_list)]
-    raw_untreated_df_inert = raw_untreated_df[raw_untreated_df['gRNA'].isin(input_control_gRNA_list)]                                                                  
-    S, min_ks, ks_distances, S_values = find_optimal_S_grid(treated_df=raw_treated_df_inert, untreated_df=raw_untreated_df_inert,
-                                            cutoff_tr=cell_number_cutoff)
+    # S, min_ks, ks_distances, S_values = find_optimal_S_grid(treated_df=raw_treated_df_inert, untreated_df=raw_untreated_df_inert,
+    #                                               cutoff_tr=cell_number_cutoff)
+    S = 0.7
+    basal_cutoff = cell_number_cutoff/S
     # return tumor size metric of each bootstrap cycle
     # applying the cell no. cutoff
-    # adj_cutoff = cell_number_cutoff
-    adj_cutoff = cell_number_cutoff * S
     # treated mouse   
-    temp_ref_df1 = Generate_ref_input_df(raw_df,input_sample_list1,adj_cutoff)
+    temp_ref_df1 = Generate_ref_input_df(raw_df,input_sample_list1,cell_number_cutoff)
     # untreated mouse
-    temp_ref_df2 = Generate_ref_input_df(raw_df,input_sample_list2,cell_number_cutoff)
+    temp_ref_df2 = Generate_ref_input_df(raw_df,input_sample_list2,basal_cutoff)
     
     # dfs passed are post cutoff
     temp_final_df_observed = calculate_GSTR_metrics(temp_ref_df1, temp_ref_df2, input_control_gRNA_list, R_dict)
-    #temp_final_df_observed['Shrinkage'] = S
+    temp_final_df_observed['Shrinkage'] = S
     temp_final_df_observed['Bootstrap_id'] = 'Real' # a new columns named Bootstrap_id. The values of the column are 'Real'
     
     # for concatenating dfs later
@@ -52,7 +58,7 @@ def bootstrap_GSTR_and_shrinkage(raw_df,input_sample_list1,input_sample_list2,ce
             # resampling the treated mice
             x = Nested_Bootstrap_Index_single(Mouse_index_dic_1)
             temp_bootstrap_df_1 = raw_treated_df.loc[x]
-            # resampling the untreated mice
+            # resampleing the untreated mice
             y = Nested_Bootstrap_Index_Special_single(Mouse_index_dic_2,raw_untreated_df,input_total_gRNA_number)
             temp_bootstrap_df_2 = raw_untreated_df.loc[y]
             
@@ -60,19 +66,19 @@ def bootstrap_GSTR_and_shrinkage(raw_df,input_sample_list1,input_sample_list2,ce
             R_dict = find_ratio_to_inert(temp_bootstrap_df_2, input_control_gRNA_list)
             print(f"bs {bootstrap_cycle} ratio dict is {R_dict}")
             # re-estimate S
-            # adj_cutoff = cell_number_cutoff
-            adj_cutoff = cell_number_cutoff * S
-            #S, adj_cutoff = find_S_gradient_descent_se_given_base_cutoff(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
+            #S, basal_cutoff = find_S(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
+            #S, basal_cutoff = find_S_gradient_descent_se(temp_bootstrap_df_1, temp_bootstrap_df_2, input_control_gRNA_list, cell_number_cutoff)
             temp_bootstrap_df_1_inert = temp_bootstrap_df_1[temp_bootstrap_df_1['gRNA'].isin(input_control_gRNA_list)]
             temp_bootstrap_df_2_inert = temp_bootstrap_df_2[temp_bootstrap_df_2['gRNA'].isin(input_control_gRNA_list)]
-            
-            S, min_ks, ks_distances, S_values = find_optimal_S_grid(treated_df=temp_bootstrap_df_1_inert, untreated_df=temp_bootstrap_df_2_inert,
-                                            cutoff_tr=cell_number_cutoff)
-            temp_bootstrap_ref_df1 = Generate_ref_input_df(temp_bootstrap_df_1, temp_bootstrap_df_1['Sample_ID'].unique(), adj_cutoff) # treated
-            temp_bootstrap_ref_df2 = Generate_ref_input_df(temp_bootstrap_df_2, temp_bootstrap_df_2['Sample_ID'].unique(), cell_number_cutoff) # untreated
+            # S, min_ks, ks_distances, S_values = find_optimal_S_grid(treated_df=temp_bootstrap_df_1_inert, untreated_df=temp_bootstrap_df_2_inert,
+            #                                       cutoff_tr=cell_number_cutoff)
+            S = 0.7
+            basal_cutoff = cell_number_cutoff/S
+            temp_bootstrap_ref_df1 = Generate_ref_input_df(temp_bootstrap_df_1, temp_bootstrap_df_1['Sample_ID'].unique(), cell_number_cutoff)
+            temp_bootstrap_ref_df2 = Generate_ref_input_df(temp_bootstrap_df_2, temp_bootstrap_df_2['Sample_ID'].unique(), basal_cutoff)
             
             temp_metric_df = calculate_GSTR_metrics(temp_bootstrap_ref_df1, temp_bootstrap_ref_df2, input_control_gRNA_list, R_dict)
-            #temp_metric_df['Shrinkage'] = S
+            temp_metric_df['Shrinkage'] = S
             temp_metric_df['Bootstrap_id'] = 'B'+str(bootstrap_cycle)
             
             temp_out_df.append(temp_metric_df)
@@ -85,11 +91,36 @@ def calculate_GSTR_metrics(treated_df,untreated_df,input_control_gRNA_list, rati
     # treated and untreated dfs are post cutoff
     treated_sum_df = treated_df.groupby(['gRNA']).Clonal_barcode.count().reset_index(name='TTN')
     untreated_sum_df = untreated_df.groupby(['gRNA']).Clonal_barcode.count().reset_index(name='TTN')
-    #ScoreRTN_df = calculate_ScoreRTN(treated_sum_df, untreated_sum_df, input_control_gRNA_list)
+    ScoreRTN_df = calculate_ScoreRTN(treated_sum_df, untreated_sum_df, input_control_gRNA_list)
     ScoreRGM_df = calculate_ScoreRGM(treated_df, untreated_df, ratio_dict, input_control_gRNA_list)
-    #df_merged = ScoreRGM_df.merge(ScoreRTN_df, on='gRNA', how='outer')
-    #return df_merged
-    return ScoreRGM_df
+    df_merged = ScoreRGM_df.merge(ScoreRTN_df, on='gRNA', how='outer')
+    return df_merged
+
+def calculate_GSTR_metrics_var(bootstrap_df):
+    # Step 1: Compute variance (σ²) of ScoreRTN and ScoreRGM for each gene
+    gene_variance = bootstrap_df.groupby(["Numbered_gene_name", "gRNA"], as_index=False)[["ScoreRTN", "ScoreRGM"]].var().rename(
+    columns={"ScoreRTN": "Var_ScoreRTN", "ScoreRGM": "Var_ScoreRGM"})  
+    print(gene_variance)
+    return gene_variance
+
+def calculate_G(bootstrap_summary_df):
+    bootstrap_summary_df['ScoreGSTR'] = (
+        (bootstrap_summary_df["ScoreRTN"] / bootstrap_summary_df["Var_ScoreRTN"]) +
+        (bootstrap_summary_df["ScoreRGM"] / bootstrap_summary_df["Var_ScoreRGM"])
+    ) / (
+        (1 / bootstrap_summary_df["Var_ScoreRTN"]) + (1 / bootstrap_summary_df["Var_ScoreRGM"])
+    )
+    
+    bootstrap_summary_df['G_hat'] = 2 ** bootstrap_summary_df["ScoreGSTR"] - 1
+
+def calculate_GSTR_metrics_var_gene_level(bootstrap_df):
+    temp_trait_list = ['ScoreRTN', 'ScoreRGM']
+    temp_df = bootstrap_df[bootstrap_df['Bootstrap_id']!='Real'].groupby([
+            'Targeted_gene_name','Bootstrap_id'],as_index = False).apply(Cal_Combined_Gene_Effect_v2,(temp_trait_list))
+    gene_variance = bootstrap_df.groupby(["Targeted_gene_name"], as_index=False)[["ScoreRTN", "ScoreRGM"]].var().rename(
+    columns={"ScoreRTN": "Var_ScoreRTN", "ScoreRGM": "Var_ScoreRGM"})  
+    print(gene_variance)
+    return gene_variance
 
 def main():
     parser = argparse.ArgumentParser(description='A function to do resampling of mice')
@@ -154,6 +185,12 @@ def main():
     raw_summary_df= raw_summary_df[~raw_summary_df.Sample_ID.isin(sample_to_exclude)] # exclude the sample 
     temp_input = raw_summary_df[raw_summary_df['Identity']=='gRNA'] # consider only sgRNA but not spiekin
     
+    # ----------------------------------------------------------------------------------------
+    # only look at inert and pten for model eval
+    gene_of_interest = ['Keap1', 'Kmt2c', 'Nf1', 'Pten', 'STAT3', 'Trp53', 'Safe33', 'Safe147', 'Safe152', 'Safe157', 'Neo1', 'Neo2', 'Neo3',
+                        'NT1', 'NT2', 'NT3']
+    temp_input = temp_input[temp_input['Targeted_gene_name'].isin(gene_of_interest)] 
+    
     sgRNA_number = len(temp_input[temp_input['Identity']=='gRNA']['gRNA'].unique())
     # I want to generate two name list of mice, one for experimental group and another one for control group.
     # experimental mouse group
@@ -166,7 +203,14 @@ def main():
         cohort_2 = temp_input[(temp_input['Mouse_genotype'] == control_genotype)]['Sample_ID'].unique()
     print(f"There are {len(cohort_2):d} control mice")
     
-    test_final_df = bootstrap_GSTR_and_shrinkage(temp_input,cohort_1,cohort_2,cell_number_cutoff,control_gRNA_list,number_of_bootstrap,sgRNA_number)
+    # ----------------------------------------------------------------------------------------
+    # repeat many times
+    test_final_df = []
+    for i in range(1):
+        temp_test_final_df = bootstrap_GSTR_and_shrinkage(temp_input,cohort_1,cohort_2,cell_number_cutoff,control_gRNA_list,number_of_bootstrap,sgRNA_number)
+        temp_test_final_df['Bootstrap_outer_id'] = 'B' + str(i)
+        test_final_df.append(temp_test_final_df)
+    test_final_df = pd.concat(test_final_df)
     print(f"Bootstrapping steps have finished")
     
     if args.o2:
@@ -176,11 +220,31 @@ def main():
         
     if number_of_bootstrap!=0:
         # generate summary statistics
-        temp_trait_list = ['ScoreRTN', 'ScoreRGM', 'Shrinkage', 'ScoreRLN', 'ScoreR95P']
+        temp_trait_list = ['ScoreRTN', 'ScoreRGM', 'Shrinkage']
         temp_trait_list = list(set(temp_trait_list))
         
-        Final_summary_df = Generate_Final_Summary_Dataframe(test_final_df,temp_trait_list) # gRNA level
-        Final_gene_summary_df = Generate_Gene_Level_Summary_Dataframe(test_final_df,temp_trait_list)
+        Final_summary_df = []
+        Final_gene_summary_df = []
+        
+        for i, group in test_final_df.groupby(['Bootstrap_outer_id']):
+            temp_summary_df = Generate_Final_Summary_Dataframe(group,temp_trait_list) # gRNA level
+            temp_GSTR_metrics_var_df = calculate_GSTR_metrics_var(group)
+            # calculate_G(temp_GSTR_metrics_var_df)
+            temp_summary_df = temp_summary_df.merge(temp_GSTR_metrics_var_df, on=['Numbered_gene_name', 'gRNA'])
+            calculate_G(temp_summary_df)
+            
+            temp_gene_summary_df = Generate_Gene_Level_Summary_Dataframe(group,temp_trait_list)
+            temp_GSTR_metrics_var_gene_df = calculate_GSTR_metrics_var_gene_level(group)
+            temp_gene_summary_df = temp_gene_summary_df.merge(temp_GSTR_metrics_var_gene_df, on=['Targeted_gene_name'])
+            calculate_G(temp_gene_summary_df)
+            
+            temp_summary_df['Bootstrap_outer_id'] = i[0]
+            temp_gene_summary_df['Bootstrap_outer_id'] = i[0]
+            Final_summary_df.append(temp_summary_df)
+            Final_gene_summary_df.append(temp_gene_summary_df)
+        
+        Final_summary_df = pd.concat(Final_summary_df)
+        Final_gene_summary_df = pd.concat(Final_gene_summary_df)
         
         Final_summary_df.to_csv(output_address+'.csv',index = False)
         Final_gene_summary_df.to_csv(output_address+'_gene_level.csv',index = False)

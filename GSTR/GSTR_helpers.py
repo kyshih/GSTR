@@ -172,7 +172,7 @@ def calculate_ScoreRGM(treated_df_cut, untreated_df_cut, ratio_dict, input_contr
     # Step 3: Merge the treated and untreated geometric mean DataFrames
     gm_treated_df = gm_treated_df.merge(gm_untreated_df, on='gRNA')
     # add on
-    gm_treated_df = gm_treated_df.merge(metrics_treated_df, on='gRNA')
+    #gm_treated_df = gm_treated_df.merge(metrics_treated_df, on='gRNA')
     
     # Step 4: Calculate RGM
     gm_treated_df['RGM_treated'] = gm_treated_df['Geo_mean_treated'] / gm_treated_df['Geo_mean_treated_inert']
@@ -290,3 +290,29 @@ def calculate_ScoreRSize_metrics(treated_df_cut, untreated_df_cut, ratio_dict, i
     scores_df = calculate_score_size(relative_metrics_df)
                                                                                        
     return scores_df
+
+def calculate_GSTR_metrics_var(bootstrap_df):
+    # Step 1: Compute variance (σ²) of ScoreRTN and ScoreRGM for each gene
+    gene_variance = bootstrap_df.groupby(["Numbered_gene_name", "gRNA"], as_index=False)[["ScoreRTN", "ScoreRGM"]].var().rename(
+    columns={"ScoreRTN": "Var_ScoreRTN", "ScoreRGM": "Var_ScoreRGM"})  
+    print(gene_variance)
+    return gene_variance
+
+def calculate_G(bootstrap_summary_df):
+    bootstrap_summary_df['ScoreGSTR'] = (
+        (bootstrap_summary_df["ScoreRTN"] / bootstrap_summary_df["Var_ScoreRTN"]) +
+        (bootstrap_summary_df["ScoreRGM"] / bootstrap_summary_df["Var_ScoreRGM"])
+    ) / (
+        (1 / bootstrap_summary_df["Var_ScoreRTN"]) + (1 / bootstrap_summary_df["Var_ScoreRGM"])
+    )
+    
+    bootstrap_summary_df['G_hat'] = 2 ** bootstrap_summary_df["ScoreGSTR"] - 1
+
+def calculate_GSTR_metrics_var_gene_level(bootstrap_df):
+    temp_trait_list = ['ScoreRTN', 'ScoreRGM']
+    temp_df = bootstrap_df[bootstrap_df['Bootstrap_id']!='Real'].groupby([
+            'Targeted_gene_name','Bootstrap_id'],as_index = False).apply(Cal_Combined_Gene_Effect_v2,(temp_trait_list))
+    gene_variance = bootstrap_df.groupby(["Targeted_gene_name"], as_index=False)[["ScoreRTN", "ScoreRGM"]].var().rename(
+    columns={"ScoreRTN": "Var_ScoreRTN", "ScoreRGM": "Var_ScoreRGM"})  
+    print(gene_variance)
+    return gene_variance

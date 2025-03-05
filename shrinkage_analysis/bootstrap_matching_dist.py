@@ -147,7 +147,6 @@ class BootstrapAnalyzer:
     # def _perform_single_bootstrap(self, treated_indices: Dict, untreated_indices: Dict, 
     #                               total_gRNA_number: int, bs_cycle='') -> Dict:
     #     # max auc
-    #     np.randome.seed(2025)
     #     treated_sample = Nested_Bootstrap_Index_single(treated_indices)
     #     untreated_sample = Nested_Bootstrap_Index_Special_single(untreated_indices, self.untreated_df, total_gRNA_number)
         

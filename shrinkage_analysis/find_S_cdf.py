@@ -10,6 +10,8 @@ from scipy.stats import ks_2samp
 def find_optimal_S_grid(treated_df, untreated_df, cutoff_tr, n_points=100, method='ks'):
     """
     Find shrinkage S using grid search.
+    cutoff_tr: cutoff is provided by me for the treated arms. 
+    Shrink vehicle to find the best matching shrunk vehicle tumors
     """
     S_values = np.logspace(-1, 0.5, n_points)  # try values from 0.01 to 3.16
     if method == 'ks':

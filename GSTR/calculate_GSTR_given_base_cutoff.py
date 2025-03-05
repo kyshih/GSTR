@@ -3,6 +3,7 @@ I adapted Emily's GSTR calculation to find S and find RTN and ScoreRTN with boot
 This is different from scale_metrics_to_inert_base in following ways:
 1. S is re-estimated using binary search in each bs cycle
 2. p-value is calculated by comparing the bootstrapped statistics to the null distribution
+3. S here is estimated by matching median inert tumor numbers
 """
 from bootstrapping_helpers import *
 from metrics_helpers import *

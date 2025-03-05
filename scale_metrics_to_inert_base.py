@@ -9,11 +9,14 @@ import numpy as np
 import argparse
 import copy
 from scipy.stats import rankdata
-from Bootstrapping_analysis.ADJ4_LORSHP2_050824.Python.metrics_helpers import Cal_Bootstrapping_Summary,fdr
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from utils.bootstrapping_helpers import Cal_Bootstrapping_Summary,fdr
 
 def calcualte_scaled_metrics_per_bootstrap(treatment_df, untreated_df, input_control_list):
-    treatment_df = treatment_df.copy(deep=True)
-    untreated_df = untreated_df.copy(deep=True)
+    treatment_df = treatment_df.copy()
+    untreated_df = untreated_df.copy()
     # Initialize an empty DataFrame to store the final results
     all_scaled_dfs = []
     all_treatment_RTN_dfs = []
@@ -63,9 +66,10 @@ def add_cohort_specific_relative_metrics_scaled_to_untreated(treatment_specific_
     # this version is for balanced gRNA representation. every gRNA is present in each bs cycle
     # Rt = sgTS/sgInert in treatment group. Rc = sgTS/sgInert in untreated group
     # scaled metric = Rt/Rc
-    trait_list = ['LN_mean_relative', 'Geo_mean_relative', '50_percentile_relative', '95_percentile_relative', 'TTB_normalized_relative',
+    trait_list = ['LN_mean_relative', 'Geo_mean_relative', '50_percentile_relative', '60_percentile_relative', '70_percentile_relative',
+                  '80_percentile_relative', '90_percentile_relative', '95_percentile_relative', 'TTB_normalized_relative',
                 'TTN_normalized_relative', 'TTN']
-    temp_output_df = treatment_specific_df[['gRNA','Targeted_gene_name', 'Numbered_gene_name','TTN', 'TTN_normalized_relative']].copy(deep=True)
+    temp_output_df = treatment_specific_df[['gRNA','Targeted_gene_name', 'Numbered_gene_name','TTN', 'TTN_normalized_relative']].copy()
     temp_treatment_df = treatment_specific_df.set_index('gRNA')
     temp_untreated_df = untreated_df.set_index('gRNA').reindex(temp_treatment_df.index) # Align rows in treatement and untreated df
     for trait in trait_list:
@@ -114,7 +118,7 @@ def Generate_Final_Summary_Dataframe(input_df,trait_of_interest):
         temp_name2 = temp_name1 + '_FDR'
         temp_name3 = temp_name1 + '_twoside'
         temp_name4 = temp_name1 + '_twoside_FDR'
-        if temp_trait == 'ScoreRTN' or 'log' in temp_trait:
+        if temp_trait == 'ScoreRTN' or temp_trait == 'ScoreRGM' or 'log' in temp_trait:
             temp_name0 = temp_trait + '_fraction_greater_than_zero'
         temp_output_df[temp_name1] = temp_output_df.apply(lambda x: min(x[temp_name0],1-x[temp_name0]), axis=1) # twosided test
         temp_output_df[temp_name2] = fdr(temp_output_df[temp_name1])
@@ -146,7 +150,8 @@ def main():
     #                      '50_percentile_relative_scaled_log','95_percentile_relative_scaled','95_percentile_relative_scaled_log','TTB_normalized_relative_scaled',
     #                      'TTB_normalized_relative_scaled_log','TTN_normalized_relative_scaled','TTN_normalized_relative_scaled_log','TTN_scaled','TTN_scaled_log',
     #                      'ScoreRTN']
-    scaled_trait_list = ['LN_mean_relative_scaled','Geo_mean_relative_scaled','50_percentile_relative_scaled',
+    scaled_trait_list = ['LN_mean_relative_scaled','Geo_mean_relative_scaled','50_percentile_relative_scaled', '60_percentile_relative_scaled',
+                         '70_percentile_relative_scaled', '80_percentile_relative_scaled', '90_percentile_relative_scaled',
                          '95_percentile_relative_scaled','TTB_normalized_relative_scaled', 'TTN_normalized_relative_scaled',
                          'TTN_scaled','ScoreRTN']
     print(f'calculating scaled metrics')

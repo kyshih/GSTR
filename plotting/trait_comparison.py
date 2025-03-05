@@ -127,7 +127,7 @@ def plot_trait_panel(ax, df, trait, title, y_label, x_ticks, gene_order, logy, y
     sns.scatterplot(x='New_axis', y=trait, hue='Targeted_gene_name', data=df, ax=ax, s=25)
     
     # Add a control line at y=1
-    if 'log' in trait or trait == 'ScoreRTN':
+    if 'log' in trait or trait == 'ScoreRTN' or trait == 'ScoreRGM':
         ax.axhline(y=0, color='black', linestyle='--')
     else:
         ax.axhline(y=1, color='black', linestyle='--')
